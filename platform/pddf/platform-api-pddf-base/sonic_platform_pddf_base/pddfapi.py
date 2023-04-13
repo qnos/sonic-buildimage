@@ -967,6 +967,15 @@ class PddfApi():
             value = self.non_raw_ipmi_set_request(bmc_attr, val)
         return (value)
 
+    def component_get_cmd(self, component_attr):
+        value = 'N/A'
+        cmd=component_attr['get_cmd']
+        try:
+            value = subprocess.check_output(cmd, shell=True, executable='/bin/bash', universal_newlines=True).strip()
+        except Exception as e:
+            pass
+        return (value)
+
     # bmc-based attr: return attr obj
     # non-bmc-based attr: return empty obj
     def check_bmc_based_attr(self, device_name, attr_name):
@@ -977,6 +986,18 @@ class PddfApi():
                     if attr['attr_name'].strip() == attr_name.strip():
                         return attr
                 # Required attr_name is not supported in BMC object
+                return {}
+        return None
+
+    # component-based attr: return attr obj
+    def check_component_based_attr(self, device_name, attr_name):
+        if device_name in self.data.keys():
+            if "comp_attr" in self.data[device_name].keys():
+                attr_list = self.data[device_name]['attr_list']
+                for attr in attr_list:
+                    if attr['attr_name'].strip() == attr_name.strip():
+                       return attr
+                # Required attr_name is not supported
                 return {}
         return None
 
@@ -1025,3 +1046,13 @@ class PddfApi():
             output['status'] = True
 
         return output
+
+    def get_attr_name_component_output(self, device_name, attr_name):
+        component_attr = self.check_component_based_attr(device_name, attr_name)
+        output_component = {"name": "", "type": "", "description":"", "version":""}
+        output_component['name']=self.data[device_name]['comp_attr']['name']
+        output_component['type']=self.data[device_name]['comp_attr']['type']
+        output_component['description']=self.data[device_name]['comp_attr']['description']
+        output_component[attr_name]=self.component_get_cmd(component_attr)
+
+        return output_component

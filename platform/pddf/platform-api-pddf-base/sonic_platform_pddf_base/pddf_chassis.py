@@ -7,6 +7,7 @@
 
 try:
     import sys
+    import syslog
     from sonic_platform_base.chassis_base import ChassisBase
     from sonic_platform.sfp import Sfp
     from sonic_platform.psu import Psu
@@ -46,7 +47,7 @@ class PddfChassis(ChassisBase):
         try:
             self._eeprom = Eeprom(self.pddf_obj, self.plugin_data)
         except Exception as err:
-            sys.stderr.write("Unable to initialize syseeprom - {}".format(repr(err)))
+            syslog.syslog(syslog.LOG_ERR, "Unable to initialize syseeprom - {}".format(repr(err)))
             # Dont exit as we dont want failure in loading other components
 
 
@@ -71,6 +72,35 @@ class PddfChassis(ChassisBase):
             thermal = Thermal(i, self.pddf_obj, self.plugin_data)
             self._thermal_list.append(thermal)
 
+        # Component firmware version initialization
+        if 'num_components' in self.platform_inventory:
+           from sonic_platform.component import Component
+           for i in range(self.platform_inventory['num_components']):
+               component = Component(i, self.pddf_obj, self.plugin_data)
+               self._component_list.append(component)
+
+        # SYSTEM LED Test Cases
+        """
+        #comment out test cases
+        sys_led_list= { "LOC":0,
+                "DIAG":0,
+                "FAN":0,
+                "SYS":0,
+                "PSU1":0,
+                "PSU2":1
+                  }
+
+        for led in sys_led_list:
+            color=self.get_system_led(led, sys_led_list[led])
+            print color
+
+        self.set_system_led("LOC_LED","STATUS_LED_COLOR_GREEN")
+        color=self.get_system_led("LOC_LED")
+        print "Set Green: " + color
+        self.set_system_led("LOC_LED", "STATUS_LED_COLOR_OFF")
+        color=self.get_system_led("LOC_LED")
+        print "Set off: " + color
+        """
 
     def get_name(self):
         """
@@ -96,11 +126,11 @@ class PddfChassis(ChassisBase):
         """
         return self._eeprom.part_number_str()
 
-    def get_service_tag(self):
+    def get_serial(self):
         """
-        Retrieves the service tag of the chassis
+        Retrieves the serial number of the chassis (Service tag)
         Returns:
-            string: Sevice tag of chassis
+            string: Serial number of chassis
         """
         return self._eeprom.serial_str()
 
@@ -123,7 +153,7 @@ class PddfChassis(ChassisBase):
         """
         return self._eeprom.base_mac_addr()
 
-    def get_serial(self):
+    def get_serial_number(self):
         """
         Retrieves the hardware serial number for the chassis
 
@@ -154,11 +184,50 @@ class PddfChassis(ChassisBase):
             is "REBOOT_CAUSE_HARDWARE_OTHER", the second string can be used
             to pass a description of the reboot cause.
         """
-        raise NotImplementedError
+        hw_reboot_cause = ""
+        import os
+        if os.path.exists('/sys/class/watchdog/watchdog0/bootstatus'):
+            try:
+                with open("/sys/class/watchdog/watchdog0/bootstatus", "r") as f:
+                    hw_reboot_cause = f.read().strip('\n')
+                if hw_reboot_cause == "32":
+                    reboot_cause = self.REBOOT_CAUSE_WATCHDOG
+                    description = 'Hardware Watchdog Reset'
+                    return (reboot_cause, description)
+            except Exception as e:
+                raise Exception('Error while trying to find the HW reboot cause - {}'.format(str(e)))
+
+        elif os.path.exists('/sys/class/watchdog/watchdog0/reboot_reason'):
+            try:
+                with open("/sys/class/watchdog/watchdog0/reboot_reason", "r") as f:
+                    hw_reboot_cause = f.read().strip('\n')
+
+                if hw_reboot_cause == "2":
+                    reboot_cause = self.REBOOT_CAUSE_WATCHDOG
+                    description = 'Hardware Watchdog Reset'
+                    return (reboot_cause, description)
+            except Exception as e:
+                raise Exception('Error while trying to find the HW reboot cause - {}'.format(str(e)))
+
+        else:
+            syslog.syslog(syslog.LOG_INFO, "Watchdog is not supported on this platform")
+
+        reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+        description = 'Unknown reason'
+
+        return (reboot_cause, description)
 
     ##############################################
     # Component methods
     ##############################################
+    def get_component_name_list(self):
+        """
+        Retrieves a list of the names of components available on the chassis (e.g., BIOS, CPLD, FPGA, etc.)
+
+        Returns:
+            A list containing the names of components available on the chassis
+        """
+        return self._component_name_list
 
     ##############################################
     # Module methods
@@ -191,9 +260,9 @@ class PddfChassis(ChassisBase):
     # if they need to be overwritten, define them here
 
     ##############################################
-    # System LED  methods
+    # All Front Panel System LED  methods
     ##############################################
-    # APIs used by PDDF. Use them for debugging front panel
+    # APIs used by PDDF (pddf_ledutil) to allow debug front panel
     # system LED and fantray LED issues
     def set_system_led(self, led_device_name, color):
         """
@@ -218,6 +287,61 @@ class PddfChassis(ChassisBase):
         result, output = self.pddf_obj.get_system_led_color(led_device_name)
         return (output)
 
+
+    ##############################################
+    # System LED methods
+    ##############################################
+
+    def set_status_led(self, led_type, color):
+        """
+        Sets the state of the system LED
+        Args:
+            led_type: A string representing the type of LED
+            color: A string representing the color with which to set the
+                   system LED
+        Returns:
+            bool: True if system LED state is set successfully, False if not
+        """
+        if (led_type is self.CHASSIS_LED_TYPE_FAN) and ('fan_master_led_color' in self.plugin_data['FAN']):
+            led_color_map = self.plugin_data['FAN']['fan_master_led_color']['colmap']
+            if color in led_color_map:
+                # change the color properly
+                new_color = led_color_map[color]
+                color = new_color
+        result, msg = self.pddf_obj.set_system_led_color(led_type, color)
+        return (result)
+
+    def get_status_led(self, led_type):
+        """
+        Gets the state of the system LED
+        Args:
+            led_type: A string representing the type of LED
+        Returns:
+            A string, one of the valid LED color strings which could be vendor
+            specified.
+        """
+        result, output = self.pddf_obj.get_system_led_color(led_type)
+        return (output)
+
+
     ##############################################
     # Other methods
     ##############################################
+
+    def get_watchdog(self):
+        """
+        Retreives hardware watchdog device on this chassis
+
+        Returns:
+            An object derived from WatchdogBase representing the hardware
+            watchdog device
+        """
+        try:
+            if self._watchdog is None:
+                from sonic_platform.watchdog import Watchdog
+                # Create the watchdog Instance
+                self._watchdog = Watchdog()
+
+        except Exception as e:
+            syslog.syslog(syslog.LOG_ERR, "Fail to load watchdog due to {}".format(e))
+        return self._watchdog
