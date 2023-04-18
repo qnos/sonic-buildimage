@@ -1,0 +1,13 @@
+{
+    "chassis": {
+        "DS3000": {
+            "component": {
+		        "BIOS": {},
+                "CPLD_BASEBOARD": {},
+                "CPLD_SWITCHBOARD": {},
+                "FPGA": {},
+                "BMC": {}
+            }
+        }
+    }
+}
