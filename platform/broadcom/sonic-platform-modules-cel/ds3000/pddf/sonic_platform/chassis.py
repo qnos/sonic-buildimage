@@ -15,8 +15,8 @@ except ImportError as e:
 
 CPLD_VERSION_CMD = "i2cget -y -f 103 0x0d 0x00 b"
 REBOOT_REASON_CMD = "i2cget -y -f 103 0x0d 0x06 b"
-SYS_LED_COLOR_SET_CMD = "ipmitool raw 0x3a 0x0a 0x00 {}"
-LED_CTRL_MODE_GET_CMD = "ipmitool raw 0x3a 0x0f 0x01"
+SYS_LED_COLOR_SET_CMD = "ipmitool raw 0x3a 0x39 0x00 {}"
+LED_CTRL_MODE_GET_CMD = "ipmitool raw 0x3a 0x42 0x01"
 
 SYSLOG_IDENTIFIER = "Chassis"
 helper_logger = logger.Logger(SYSLOG_IDENTIFIER)
@@ -27,18 +27,19 @@ class Chassis(PddfChassis):
     """
     # SYS LED color defines
     SYS_LED_COLOR_OFF = 0x0
-    SYS_LED_COLOR_AMBER = 0x1
+    SYS_LED_COLOR_GREEN = 0x1
+    SYS_LED_COLOR_AMBER = 0x2
     SYS_LED_COLOR_AMBER_BLINK = 0x3
-    SYS_LED_COLOR_AMBER_BLINK_4HZ = 0x2
+    SYS_LED_COLOR_AMBER_BLINK_4HZ = 0x4
     SYS_LED_COLOR_AMBER_BLINK_1HZ = 0x3
-    SYS_LED_COLOR_GREEN = 0x4
-    SYS_LED_COLOR_GREEN_BLINK = 0x6
-    SYS_LED_COLOR_GREEN_BLINK_4HZ = 0x5
-    SYS_LED_COLOR_GREEN_BLINK_1HZ = 0x6
+    SYS_LED_COLOR_GREEN_BLINK = 0x5
+    SYS_LED_COLOR_GREEN_BLINK_4HZ = 0x6
+    SYS_LED_COLOR_GREEN_BLINK_1HZ = 0x5
 
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
         self.baseboard_cpld_ver = 0
+        """
         if os.getuid() == 0:
             status, cpld_ver = self._getstatusoutput(CPLD_VERSION_CMD)
         else:
@@ -46,6 +47,7 @@ class Chassis(PddfChassis):
         if status != 0:
             pass
         self.baseboard_cpld_ver = int(cpld_ver, 16)
+        """
 
     def _getstatusoutput(self, cmd):
         try:
