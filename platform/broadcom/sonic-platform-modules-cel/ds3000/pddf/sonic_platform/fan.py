@@ -17,6 +17,8 @@ class Fan(PddfFan):
         """
           Retrieves the presence of fan
         """
+        if self.is_psu_fan:
+            return super().get_presence()
         return super().get_presence() and self.get_status()
 
     def get_direction(self):
@@ -126,9 +128,9 @@ class Fan(PddfFan):
 
                 if speed == 0:
                     # Enable FCS auto control mode
-                    bmc_cmd = "ipmitool raw 0x3a 0xe 0x0"
+                    bmc_cmd = "ipmitool raw 0x3a 0x26 0x1 0x1"
                 else:
-                    bmc_cmd = "ipmitool raw 0x3a 0xe 0x1 0x2 {}".format(hex(pwm))
+                    bmc_cmd = "ipmitool raw 0x3a 0x26 0x1 0x0 && ipmitool raw 0x3a 0x26 0x2 0xfe {}".format(hex(pwm))
                 try:
                     p = os.popen(bmc_cmd)
                     p.close()
