@@ -1,7 +1,5 @@
 /*
- * pddf_custom_fpga_algo.c - driver for ds3000 Switch board FPGA I2C.
- *
- * Author: Eric Zhu
+ * pddf_custom_fpga_algo.c - driver algorithm for FPGAPCIE AXI IIC.
  *
  * Copyright (C) 2023 Celestica Corp.
  *
@@ -12,505 +10,527 @@
  *
  */
 
-#include <linux/interrupt.h>
-#include <linux/module.h>
-#include <linux/pci.h>
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <linux/string.h>
 #include <linux/kernel.h>
-#include <linux/stddef.h>
-#include <linux/ioport.h>
-#include <linux/init.h>
-#include <linux/i2c.h>
-#include <linux/acpi.h>
-#include <linux/io.h>
-#include <linux/dmi.h>
-#include <linux/slab.h>
-#include <linux/err.h>
-#include <linux/kobject.h>
-#include <linux/platform_device.h>
-#include <linux/types.h>
-#include <uapi/linux/stat.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/delay.h>
 #include <linux/jiffies.h>
+#include <linux/errno.h>
+#include <linux/i2c.h>
 #include "../../../../pddf/i2c/modules/include/pddf_i2c_algo.h"
 
-extern void __iomem * fpga_ctl_addr;
-extern int (*ptr_fpgapci_read)(uint32_t);
-extern int (*ptr_fpgapci_write)(uint32_t, uint32_t);
-extern int (*pddf_i2c_pci_add_numbered_bus)(struct i2c_adapter *, int);
-
-#ifndef TEST_MODE
-#define MOD_VERSION "0.0.1"
-#else
-#define MOD_VERSION "TEST"
-#endif
-
-#ifdef DEBUG_KERN
-#define info(fmt,args...)  printk(KERN_INFO "line %3d : "fmt,__LINE__,##args)
-#define check(REG)         printk(KERN_INFO "line %3d : %-8s = %2.2X",__LINE__,#REG,ioread8(REG));
-#else
-#define info(fmt,args...)
-#define check(REG)
-#endif
-
-#define GET_REG_BIT(REG,BIT)   ((ioread8(REG) >> BIT) & 0x01)
-#define SET_REG_BIT_H(REG,BIT) iowrite8(ioread8(REG) |  (0x01 << BIT),REG)
-#define SET_REG_BIT_L(REG,BIT) iowrite8(ioread8(REG) & ~(0x01 << BIT),REG)
-
-
-/* I2C_MASTER BASE ADDR */
-#define I2C_MASTER_FREQ_1           0x0
-#define I2C_MASTER_CTRL_1           0x4
-#define I2C_MASTER_STATUS_1         0x8
-#define I2C_MASTER_DATA_1           0xc
-#define I2C_MASTER_PORT_ID_1        0x10
+#define DEBUG_KERN 0
 
 enum {
-    I2C_SR_BIT_RXAK = 0,
-    I2C_SR_BIT_MIF,
-    I2C_SR_BIT_SRW,
-    I2C_SR_BIT_BCSTM,
-    I2C_SR_BIT_MAL,
-    I2C_SR_BIT_MBB,
-    I2C_SR_BIT_MAAS,
-    I2C_SR_BIT_MCF
+    STATE_DONE = 0,
+    STATE_INIT,
+    STATE_ADDR,
+    STATE_ADDR10,
+    STATE_START,
+    STATE_WRITE,
+    STATE_READ,
+    STATE_STOP,
+    STATE_ERROR,
 };
 
-enum {
-    I2C_CR_BIT_BCST = 0,
-    I2C_CR_BIT_RSTA = 2,
-    I2C_CR_BIT_TXAK,
-    I2C_CR_BIT_MTX,
-    I2C_CR_BIT_MSTA,
-    I2C_CR_BIT_MIEN,
-    I2C_CR_BIT_MEN,
-};
+#define XIIC_MSB_OFFSET 0
+#define XIIC_REG_OFFSET (0x100 + XIIC_MSB_OFFSET)
 
-enum {
-    I2C_FREQ_400K = 7,
-    I2C_FREQ_200K = 15,
-    I2C_FREQ_100K = 31,
-    I2C_FREQ_50K = 63,
-};
+/*
+ * Register offsets in bytes from RegisterBase. Three is added to the
+ * base offset to access LSB (IBM style) of the word
+ */
+#define XIIC_CR_REG_OFFSET   (0x00 + XIIC_REG_OFFSET)	/* Control Register   */
+#define XIIC_SR_REG_OFFSET   (0x04 + XIIC_REG_OFFSET)	/* Status Register    */
+#define XIIC_DTR_REG_OFFSET  (0x08 + XIIC_REG_OFFSET)	/* Data Tx Register   */
+#define XIIC_DRR_REG_OFFSET  (0x0C + XIIC_REG_OFFSET)	/* Data Rx Register   */
+#define XIIC_ADR_REG_OFFSET  (0x10 + XIIC_REG_OFFSET)	/* Address Register   */
+#define XIIC_TFO_REG_OFFSET  (0x14 + XIIC_REG_OFFSET)	/* Tx FIFO Occupancy  */
+#define XIIC_RFO_REG_OFFSET  (0x18 + XIIC_REG_OFFSET)	/* Rx FIFO Occupancy  */
+#define XIIC_TBA_REG_OFFSET  (0x1C + XIIC_REG_OFFSET)	/* 10 Bit Address reg */
+#define XIIC_RFD_REG_OFFSET  (0x20 + XIIC_REG_OFFSET)	/* Rx FIFO Depth reg  */
+#define XIIC_GPO_REG_OFFSET  (0x24 + XIIC_REG_OFFSET)	/* Output Register    */
 
+/* Control Register masks */
+#define XIIC_CR_ENABLE_DEVICE_MASK        0x01	/* Device enable = 1      */
+#define XIIC_CR_TX_FIFO_RESET_MASK        0x02	/* Transmit FIFO reset=1  */
+#define XIIC_CR_MSMS_MASK                 0x04	/* Master starts Txing=1  */
+#define XIIC_CR_DIR_IS_TX_MASK            0x08	/* Dir of tx. Txing=1     */
+#define XIIC_CR_NO_ACK_MASK               0x10	/* Tx Ack. NO ack = 1     */
+#define XIIC_CR_REPEATED_START_MASK       0x20	/* Repeated start = 1     */
+#define XIIC_CR_GENERAL_CALL_MASK         0x40	/* Gen Call enabled = 1   */
+
+/* Status Register masks */
+#define XIIC_SR_GEN_CALL_MASK             0x01	/* 1=a mstr issued a GC   */
+#define XIIC_SR_ADDR_AS_SLAVE_MASK        0x02	/* 1=when addr as slave   */
+#define XIIC_SR_BUS_BUSY_MASK             0x04	/* 1 = bus is busy        */
+#define XIIC_SR_MSTR_RDING_SLAVE_MASK     0x08	/* 1=Dir: mstr <-- slave  */
+#define XIIC_SR_TX_FIFO_FULL_MASK         0x10	/* 1 = Tx FIFO full       */
+#define XIIC_SR_RX_FIFO_FULL_MASK         0x20	/* 1 = Rx FIFO full       */
+#define XIIC_SR_RX_FIFO_EMPTY_MASK        0x40	/* 1 = Rx FIFO empty      */
+#define XIIC_SR_TX_FIFO_EMPTY_MASK        0x80	/* 1 = Tx FIFO empty      */
+
+/* Interrupt Status Register masks    Interrupt occurs when...       */
+#define XIIC_INTR_ARB_LOST_MASK           0x01	/* 1 = arbitration lost   */
+#define XIIC_INTR_TX_ERROR_MASK           0x02	/* 1=Tx error/msg complete */
+#define XIIC_INTR_TX_EMPTY_MASK           0x04	/* 1 = Tx FIFO/reg empty  */
+#define XIIC_INTR_RX_FULL_MASK            0x08	/* 1=Rx FIFO/reg=OCY level */
+#define XIIC_INTR_BNB_MASK                0x10	/* 1 = Bus not busy       */
+#define XIIC_INTR_AAS_MASK                0x20	/* 1 = when addr as slave */
+#define XIIC_INTR_NAAS_MASK               0x40	/* 1 = not addr as slave  */
+#define XIIC_INTR_TX_HALF_MASK            0x80	/* 1 = TX FIFO half empty */
+
+/* The following constants specify the depth of the FIFOs */
+#define IIC_RX_FIFO_DEPTH                 16	/* Rx fifo capacity       */
+#define IIC_TX_FIFO_DEPTH                 16	/* Tx fifo capacity       */
+
+/*
+ * Tx Fifo upper bit masks.
+ */
+#define XIIC_TX_DYN_START_MASK            0x0100 /* 1 = Set dynamic start */
+#define XIIC_TX_DYN_STOP_MASK             0x0200 /* 1 = Set dynamic stop */
+
+/*
+ * The following constants define the register offsets for the Interrupt
+ * registers. There are some holes in the memory map for reserved addresses
+ * to allow other registers to be added and still match the memory map of the
+ * interrupt controller registers
+ */
+#define XIIC_IISR_OFFSET     0x20 /* Interrupt Status Register */
+#define XIIC_RESETR_OFFSET   0x40 /* Reset Register */
+
+#define XIIC_RESET_MASK             0xAUL
+
+#define XIIC_PM_TIMEOUT		1000	/* ms */
+/* timeout waiting for the controller to respond */
+#define XIIC_I2C_TIMEOUT	(msecs_to_jiffies(1000))
 
 struct fpgalogic_i2c {
     void __iomem *base;
-//    u32 reg_shift;
-//    u32 reg_io_width;
+    u32 reg_shift;
+    u32 reg_io_width;
     wait_queue_head_t wait;
-//    struct i2c_msg *msg;
-//    int pos;
-//    int nmsgs;
-//    int state; /* see STATE_ */
-//    int ip_clock_khz;
-//    int bus_clock_khz;
-//    void (*reg_set)(struct fpgalogic_i2c *i2c, int reg, u8 value);
-//    u8 (*reg_get)(struct fpgalogic_i2c *i2c, int reg);
+    struct i2c_msg *msg;
+    int pos;
+    int nmsgs;
+    int state; /* see STATE_ */
+    int ip_clock_khz;
+    int bus_clock_khz;
+    void (*reg_set)(struct fpgalogic_i2c *i2c, int reg, u8 value);
+    u8 (*reg_get)(struct fpgalogic_i2c *i2c, int reg);
     u32 timeout;
     struct mutex lock;
 };
 
-static int smbus_access(struct i2c_adapter *adapter, u16 addr,
-                        unsigned short flags, char rw, u8 cmd,
-                        int size, union i2c_smbus_data *data);
-static int i2c_wait_ack(struct i2c_adapter *a, int writing);
-static int fpgai2c_init(struct fpgalogic_i2c *i2c);
-static int adap_data_init(struct i2c_adapter *adap, int i2c_ch_index);
-
-
 static struct fpgalogic_i2c fpgalogic_i2c[I2C_PCI_MAX_BUS];
+extern void __iomem * fpga_ctl_addr;
+extern int (*ptr_fpgapci_read)(uint32_t);
+extern int (*ptr_fpgapci_write)(uint32_t, uint32_t);
+extern int (*pddf_i2c_pci_add_numbered_bus)(struct i2c_adapter *, int);
+static int xiic_reinit(struct fpgalogic_i2c *i2c);
 
-static int i2c_wait_ack(struct i2c_adapter *a, int writing)
+
+void i2c_get_mutex(struct fpgalogic_i2c *i2c)
 {
-    int error = 0;
-    int Status;
-
-    struct fpgalogic_i2c *i2c = i2c_get_adapdata(a);
-    unsigned long timeout;
-
-    void __iomem *REG_FDR0;
-    void __iomem *REG_CR0;
-    void __iomem *REG_SR0;
-    void __iomem *REG_DR0;
-//    void __iomem *REG_ID0;
-
-    REG_FDR0  = I2C_MASTER_FREQ_1   + i2c->base;
-    REG_CR0   = I2C_MASTER_CTRL_1   + i2c->base;
-    REG_SR0   = I2C_MASTER_STATUS_1 + i2c->base;
-    REG_DR0   = I2C_MASTER_DATA_1   + i2c->base;
-//    REG_ID0   = I2C_MASTER_PORT_ID_1 + i2c->base;
-
-    check(REG_SR0);
-    check(REG_CR0);
-
-    timeout = jiffies + msecs_to_jiffies(i2c->timeout);
-    while (1) {
-        Status = ioread8(REG_SR0);
-        if (jiffies > timeout) {
-            info("Status %2.2X", Status);
-            info("Error Timeout");
-            error = -ETIMEDOUT;
-            break;
-        }
-
-
-        if (Status & (1 << I2C_SR_BIT_MIF)) {
-            break;
-        }
-
-        if (writing == 0 && (Status & (1 << I2C_SR_BIT_MCF))) {
-            break;
-        }
-    }
-    Status = ioread8(REG_SR0);
-    iowrite8(0, REG_SR0);
-
-    if (error < 0) {
-        info("Status %2.2X", Status);
-        return error;
-    }
-
-    if (!(Status & (1 << I2C_SR_BIT_MCF))) {
-        info("Error Unfinish");
-        return -EIO;
-    }
-
-    if (Status & (1 << I2C_SR_BIT_MAL)) {
-        info("Error MAL");
-        return -EAGAIN;
-    }
-
-    if (Status & (1 << I2C_SR_BIT_RXAK)) {
-        info( "SL No Acknowlege");
-        if (writing) {
-            info("Error No Acknowlege");
-            iowrite8(1 << I2C_CR_BIT_MEN, REG_CR0);
-            return -ENXIO;
-        }
-    } else {
-        info( "SL Acknowlege");
-    }
-
-    return 0;
-}
-
-static int smbus_access(struct i2c_adapter *adapter, u16 addr,
-                        unsigned short flags, char rw, u8 cmd,
-                        int size, union i2c_smbus_data *data)
-{
-    int error = 0;
-    int cnt = 0;
-    int bid = 0;
-    struct fpgalogic_i2c *i2c;
-
-    void __iomem *REG_FDR0;
-    void __iomem *REG_CR0;
-    void __iomem *REG_SR0;
-    void __iomem *REG_DR0;
-//    void __iomem *REG_ID0;
-
-    /* Write the command register */
-    i2c = i2c_get_adapdata(adapter);
-#ifdef DEBUG_KERN
-    printk(KERN_INFO "@ 0x%2.2X|f 0x%4.4X|(%d)%-5s| (%d)%-15s|CMD %2.2X "
-           , addr, flags, rw, rw == 1 ? "READ " : "WRITE"
-           , size,                  size == 0 ? "QUICK" :
-           size == 1 ? "BYTE" :
-           size == 2 ? "BYTE_DATA" :
-           size == 3 ? "WORD_DATA" :
-           size == 4 ? "PROC_CALL" :
-           size == 5 ? "BLOCK_DATA" :
-           size == 8 ? "I2C_BLOCK_DATA" :  "ERROR"
-           , cmd);
-#endif
-    /* Map the size to what the chip understands */
-    switch (size) {
-        case I2C_SMBUS_QUICK:
-        case I2C_SMBUS_BYTE:
-        case I2C_SMBUS_BYTE_DATA:
-        case I2C_SMBUS_WORD_DATA:
-        case I2C_SMBUS_BLOCK_DATA:
-        case I2C_SMBUS_I2C_BLOCK_DATA:
-            break;
-        default:
-            printk(KERN_INFO "Unsupported transaction %d\n", size);
-            error = -EOPNOTSUPP;
-            return error;
-    }
-
-    REG_FDR0  = I2C_MASTER_FREQ_1   + i2c->base;
-    REG_CR0   = I2C_MASTER_CTRL_1   + i2c->base;
-    REG_SR0   = I2C_MASTER_STATUS_1 + i2c->base;
-    REG_DR0   = I2C_MASTER_DATA_1   + i2c->base;
-//    REG_ID0   = I2C_MASTER_PORT_ID_1 + i2c->base;
-
-//    iowrite8(portid, REG_ID0);
-
-    ////[S][ADDR/R]
-    // Clear status register
-    iowrite8(0, REG_SR0);
-    iowrite8(1 << I2C_CR_BIT_MIEN |
-             1 << I2C_CR_BIT_MTX |
-             1 << I2C_CR_BIT_MSTA , REG_CR0);
-    SET_REG_BIT_H(REG_CR0, I2C_CR_BIT_MEN);
-
-    if (rw == I2C_SMBUS_READ &&
-            (size == I2C_SMBUS_QUICK || size == I2C_SMBUS_BYTE)) {
-        // sent device address with Read mode
-        iowrite8(addr << 1 | 0x01, REG_DR0);
-    } else {
-        // sent device address with Write mode
-        iowrite8(addr << 1 | 0x00, REG_DR0);
-    }
-
-
-
-    info( "MS Start");
-
-    //// Wait {A}
-    error = i2c_wait_ack(adapter, 1);
-    if (error < 0) {
-        info( "get error %d", error);
-        goto Done;
-    }
-
-    //// [CMD]{A}
-    if (size == I2C_SMBUS_BYTE_DATA ||
-            size == I2C_SMBUS_WORD_DATA ||
-            size == I2C_SMBUS_BLOCK_DATA ||
-            size == I2C_SMBUS_I2C_BLOCK_DATA ||
-            (size == I2C_SMBUS_BYTE && rw == I2C_SMBUS_WRITE)) {
-
-        // sent command code to data register
-        iowrite8(cmd, REG_DR0);
-        info( "MS Send CMD 0x%2.2X", cmd);
-
-        // Wait {A}
-        error = i2c_wait_ack(adapter, 1);
-        if (error < 0) {
-            info( "get error %d", error);
-            goto Done;
-        }
-    }
-
-    switch (size) {
-    case I2C_SMBUS_BYTE_DATA:
-        cnt = 1;  break;
-    case I2C_SMBUS_WORD_DATA:
-        cnt = 2;  break;
-    case I2C_SMBUS_BLOCK_DATA:
-    case I2C_SMBUS_I2C_BLOCK_DATA:
-        /* In block data modes keep number of byte in block[0] */
-        cnt = data->block[0];
-        break;
-    default:
-        cnt = 0;  break;
-    }
-
-    // [CNT]  used only block data write
-    if (size == I2C_SMBUS_BLOCK_DATA && rw == I2C_SMBUS_WRITE) {
-
-        iowrite8(cnt, REG_DR0);
-        info( "MS Send CNT 0x%2.2X", cnt);
-
-        // Wait {A}
-        error = i2c_wait_ack(adapter, 1);
-        if (error < 0) {
-            info( "get error %d", error);
-            goto Done;
-        }
-    }
-
-    // [DATA]{A}
-    if ( rw == I2C_SMBUS_WRITE && (
-                size == I2C_SMBUS_BYTE ||
-                size == I2C_SMBUS_BYTE_DATA ||
-                size == I2C_SMBUS_WORD_DATA ||
-                size == I2C_SMBUS_BLOCK_DATA ||
-                size == I2C_SMBUS_I2C_BLOCK_DATA
-            )) {
-        bid = 0;
-        info( "MS prepare to sent [%d bytes]", cnt);
-        if (size == I2C_SMBUS_BLOCK_DATA || size == I2C_SMBUS_I2C_BLOCK_DATA) {
-            bid = 1;    // block[0] is cnt;
-            cnt += 1;   // offset from block[0]
-        }
-        for (; bid < cnt; bid++) {
-
-            iowrite8(data->block[bid], REG_DR0);
-            info( "   Data > %2.2X", data->block[bid]);
-            // Wait {A}
-            error = i2c_wait_ack(adapter, 1);
-            if (error < 0) {
-                goto Done;
-            }
-        }
-
-    }
-
-    // REPEATE START
-    if ( rw == I2C_SMBUS_READ && (
-                size == I2C_SMBUS_BYTE_DATA ||
-                size == I2C_SMBUS_WORD_DATA ||
-                size == I2C_SMBUS_BLOCK_DATA ||
-                size == I2C_SMBUS_I2C_BLOCK_DATA
-            )) {
-        info( "MS Repeated Start");
-
-        SET_REG_BIT_L(REG_CR0, I2C_CR_BIT_MEN);
-        iowrite8(1 << I2C_CR_BIT_MIEN |
-                 1 << I2C_CR_BIT_MTX |
-                 1 << I2C_CR_BIT_MSTA |
-                 1 << I2C_CR_BIT_RSTA , REG_CR0);
-        SET_REG_BIT_H(REG_CR0, I2C_CR_BIT_MEN);
-
-        // sent Address with Read mode
-        iowrite8( addr << 1 | 0x1 , REG_DR0);
-
-        // Wait {A}
-        error = i2c_wait_ack(adapter, 1);
-        if (error < 0) {
-            goto Done;
-        }
-
-    }
-
-    if ( rw == I2C_SMBUS_READ && (
-                size == I2C_SMBUS_BYTE ||
-                size == I2C_SMBUS_BYTE_DATA ||
-                size == I2C_SMBUS_WORD_DATA ||
-                size == I2C_SMBUS_BLOCK_DATA ||
-                size == I2C_SMBUS_I2C_BLOCK_DATA
-            )) {
-
-        switch (size) {
-        case I2C_SMBUS_BYTE:
-        case I2C_SMBUS_BYTE_DATA:
-            cnt = 1;  break;
-        case I2C_SMBUS_WORD_DATA:
-            cnt = 2;  break;
-        case I2C_SMBUS_BLOCK_DATA:
-            // will be changed after recived first data
-            cnt = 3;  break;
-        case I2C_SMBUS_I2C_BLOCK_DATA:
-            cnt = data->block[0];  break;
-        default:
-            cnt = 0;  break;
-        }
-
-        bid = 0;
-        info( "MS Receive");
-
-        //set to Receive mode
-        iowrite8(1 << I2C_CR_BIT_MEN |
-                 1 << I2C_CR_BIT_MIEN |
-                 1 << I2C_CR_BIT_MSTA , REG_CR0);
-
-        for (bid = -1; bid < cnt; bid++) {
-
-            // Wait for byte transfer
-            error = i2c_wait_ack(adapter, 0);
-            if (error < 0) {
-                goto Done;
-            }
-
-            if (bid == cnt - 2) {
-                info( "SET NAK");
-                SET_REG_BIT_H(REG_CR0, I2C_CR_BIT_TXAK);
-            }
-
-            if (bid < 0) {
-                ioread8(REG_DR0);
-                info( "READ Dummy Byte" );
-            } else {
-
-                if (bid == cnt - 1) {
-                    info ( "SET STOP in read loop");
-                    SET_REG_BIT_L(REG_CR0, I2C_CR_BIT_MSTA);
-                }
-                if (size == I2C_SMBUS_I2C_BLOCK_DATA) {
-                    // block[0] is read length
-                    data->block[bid + 1] = ioread8(REG_DR0);
-                } else {
-                    data->block[bid] = ioread8(REG_DR0);
-                }
-                info( "DATA IN [%d] %2.2X", bid, data->block[bid]);
-
-                if (size == I2C_SMBUS_BLOCK_DATA && bid == 0) {
-                    cnt = data->block[0] + 1;
-                }
-            }
-        }
-    }
-
-    // [P]
-    SET_REG_BIT_L(REG_CR0, I2C_CR_BIT_MSTA);
-    info( "MS STOP");
-
-Done:
-    iowrite8(1 << I2C_CR_BIT_MEN, REG_CR0);
-    check(REG_CR0);
-    check(REG_SR0);
-#ifdef DEBUG_KERN
-    printk(KERN_INFO "END --- Error code  %d", error);
-#endif
-
-    return error;
-}
-
-static int fpga_i2c_access(struct i2c_adapter *adapter, u16 addr,
-                           unsigned short flags, char rw, u8 cmd,
-                           int size, union i2c_smbus_data *data)
-{
-    int error = 0;
-    struct fpgalogic_i2c *i2c;
-    i2c = i2c_get_adapdata(adapter);
-
-    // Acquire the master resource.
     mutex_lock(&i2c->lock);
+}
 
-    // Do SMBus communication
-    error = smbus_access(adapter, addr, flags, rw, cmd, size, data);
-    if (error < 0) {
-        dev_dbg( &adapter->dev,
-                 "smbus_access failed (%d) @ 0x%2.2X|f 0x%4.4X|(%d)%-5s| (%d)%-10s|CMD %2.2X "
-                 , error, addr, flags, rw, rw == 1 ? "READ " : "WRITE"
-                 , size,                  size == 0 ? "QUICK" :
-                 size == 1 ? "BYTE" :
-                 size == 2 ? "BYTE_DATA" :
-                 size == 3 ? "WORD_DATA" :
-                 size == 4 ? "PROC_CALL" :
-                 size == 5 ? "BLOCK_DATA" :
-                 size == 8 ? "I2C_BLOCK_DATA" :  "ERROR"
-                 , cmd);
-    }
-
+/**
+ * i2c_release_mutex - release mutex
+ */
+void i2c_release_mutex(struct fpgalogic_i2c *i2c)
+{
     mutex_unlock(&i2c->lock);
-    return error;
+}
+
+static inline void xiic_setreg32(struct fpgalogic_i2c *i2c, int reg, int value)
+{
+	(void)iowrite32(value, i2c->base + reg);
+}
+
+static inline int xiic_getreg32(struct fpgalogic_i2c *i2c, int reg)
+{
+	u32 ret;
+
+	ret = ioread32(i2c->base + reg);
+	
+	return ret;
+}
+
+static inline void xiic_irq_clr(struct fpgalogic_i2c *i2c, u32 mask)
+{
+	u32 isr = xiic_getreg32(i2c, XIIC_IISR_OFFSET);
+
+	xiic_setreg32(i2c, XIIC_IISR_OFFSET, isr & mask);
+}
+
+static int xiic_clear_rx_fifo(struct fpgalogic_i2c *i2c)
+{
+	u8 sr;
+	unsigned long timeout;
+
+	timeout = jiffies + XIIC_I2C_TIMEOUT;
+	for (sr = xiic_getreg32(i2c, XIIC_SR_REG_OFFSET);
+		!(sr & XIIC_SR_RX_FIFO_EMPTY_MASK);
+		sr = xiic_getreg32(i2c, XIIC_SR_REG_OFFSET)) {
+		xiic_getreg32(i2c, XIIC_DRR_REG_OFFSET);
+		if (time_after(jiffies, timeout)) {
+			printk("Failed to clear rx fifo\n");
+			return -ETIMEDOUT;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Wait until something change in a given register
+ * @i2c: AXI IIC device instance
+ * @reg: register to query
+ * @mask: bitmask to apply on register value
+ * @val: expected result
+ * @timeout: timeout in jiffies
+ *
+ * Timeout is necessary to avoid to stay here forever when the chip
+ * does not answer correctly.
+ *
+ * Return: 0 on success, -ETIMEDOUT on timeout
+ */
+static int poll_wait(struct fpgalogic_i2c *i2c,
+		       int reg, u8 mask, u8 val,
+		       const unsigned long timeout)
+{
+	unsigned long j;
+	u8 status = 0;
+
+	j = jiffies + timeout;
+	while (1) {
+		mutex_lock(&i2c->lock);
+		status = xiic_getreg32(i2c, reg);
+		mutex_unlock(&i2c->lock);
+		if ((status & mask) == val)
+			break;
+		if (time_after(jiffies, j))
+			return -ETIMEDOUT;
+                cpu_relax();
+                cond_resched();		
+	}
+	return 0;
+}
+
+/**
+ * Wait until is possible to process some data
+ * @i2c: AXI IIC device instance
+ *
+ * Used when the device is in polling mode (interrupts disabled).
+ *
+ * Return: 0 on success, -ETIMEDOUT on timeout
+ */
+static int xiic_poll_wait(struct fpgalogic_i2c *i2c)
+{
+	u8 mask = 0, status = 0;
+	int err = 0;
+	int val = 0;
+	int tmp = 0;
+	mutex_lock(&i2c->lock);
+	if (i2c->state == STATE_DONE) {
+		/* transfer is over */
+		mask = XIIC_SR_BUS_BUSY_MASK;
+	} else if (i2c->state == STATE_WRITE || i2c->state == STATE_START){
+		/* on going transfer */
+		if (0 == i2c->msg->len){
+			mask = XIIC_INTR_TX_ERROR_MASK;
+		} else {
+			mask = XIIC_SR_TX_FIFO_FULL_MASK;
+		}
+	}
+	else if (i2c->state == STATE_READ){
+		/* on going receive */
+		mask = XIIC_SR_TX_FIFO_EMPTY_MASK | XIIC_SR_RX_FIFO_EMPTY_MASK;
+	}
+	mutex_unlock(&i2c->lock);
+	// printk("Wait for: 0x%x\n", mask);
+
+	/*
+	 * once we are here we expect to get the expected result immediately
+	 * so if after 50ms we timeout then something is broken.
+	 */
+	
+	if (1 == i2c->nmsgs && 0 == i2c->msg->len && i2c->state == STATE_START && !(i2c->msg->flags & I2C_M_RD)) { 	/* for i2cdetect I2C_SMBUS_QUICK mode*/
+		err = poll_wait(i2c, XIIC_IISR_OFFSET, mask, mask, msecs_to_jiffies(50));
+		mutex_lock(&i2c->lock);
+		status = xiic_getreg32(i2c, XIIC_SR_REG_OFFSET);
+		mutex_unlock(&i2c->lock);
+		if (0 != err) { /* AXI IIC as an transceiver , if ever an XIIC_INTR_TX_ERROR_MASK interrupt happens, means no such i2c device */
+			err = 0;
+		} else {
+			err = -ETIMEDOUT;
+		}
+	} else {
+		if (mask & XIIC_SR_TX_FIFO_EMPTY_MASK){
+			err = poll_wait(i2c, XIIC_SR_REG_OFFSET, mask, XIIC_SR_TX_FIFO_EMPTY_MASK, msecs_to_jiffies(50));
+			mask &= ~XIIC_SR_TX_FIFO_EMPTY_MASK;
+		}
+		if (0 == err){
+			err = poll_wait(i2c, XIIC_SR_REG_OFFSET, mask, 0, msecs_to_jiffies(50));
+		}
+		mutex_lock(&i2c->lock);
+		status = xiic_getreg32(i2c, XIIC_IISR_OFFSET);	
+		
+		if ((status & XIIC_INTR_ARB_LOST_MASK) ||
+			((status & XIIC_INTR_TX_ERROR_MASK) &&
+			!(status & XIIC_INTR_RX_FULL_MASK) &&
+			!(i2c->msg->flags & I2C_M_RD))) {  /* AXI IIC as an transceiver , if ever an XIIC_INTR_TX_ERROR_MASK interrupt happens, return */
+			err = -ETIMEDOUT;
+			
+			if (status & XIIC_INTR_ARB_LOST_MASK) {
+				val = xiic_getreg32(i2c, XIIC_CR_REG_OFFSET);
+				tmp = XIIC_CR_MSMS_MASK;
+				val &=(~tmp);
+				xiic_setreg32(i2c, XIIC_CR_REG_OFFSET, val);
+				xiic_setreg32(i2c, XIIC_IISR_OFFSET, XIIC_INTR_ARB_LOST_MASK);
+				printk("%s: TRANSFER STATUS ERROR, ISR: bit 0x%x happens\n",
+					 __func__, XIIC_INTR_ARB_LOST_MASK);
+			} 
+			if (status & XIIC_INTR_TX_ERROR_MASK) {
+				int sta = 0;
+				int cr = 0;
+				sta = xiic_getreg32(i2c,XIIC_SR_REG_OFFSET);
+				cr = xiic_getreg32(i2c,XIIC_CR_REG_OFFSET);
+				xiic_setreg32(i2c, XIIC_IISR_OFFSET, XIIC_INTR_TX_ERROR_MASK);
+				printk("%s: TRANSFER STATUS ERROR, ISR: bit 0x%x happens; SR: bit 0x%x; CR: bit 0x%x\n",
+					 __func__, status, sta, cr);
+			}
+			/* Soft reset IIC controller. */
+			xiic_setreg32(i2c, XIIC_RESETR_OFFSET, XIIC_RESET_MASK);
+			(void)xiic_reinit(i2c);
+			mutex_unlock(&i2c->lock);
+			return err;
+		}
+		mutex_unlock(&i2c->lock);
+	}
+	
+	if (err)
+		printk("%s: STATUS timeout, bit 0x%x did not clear in 50ms\n",
+			 __func__, status);
+	return err;
+}
+
+static void xiic_process(struct fpgalogic_i2c *i2c)
+{
+	struct i2c_msg *msg = i2c->msg;
+	//unsigned long flags;
+	u16 val;
+
+	/*
+	 * If we spin here because we are in timeout, so we are going
+	 * to be in STATE_ERROR.
+	 */
+	mutex_lock(&i2c->lock);
+	// printk("STATE: %d\n", i2c->state);
+
+	if (i2c->state == STATE_START) {
+		i2c->state =(msg->flags & I2C_M_RD) ? STATE_READ : STATE_WRITE;
+		/* if it's the time sequence is 'start bit + address + read bit + stop bit' */
+		if (i2c->state == STATE_READ){
+			/* it's the last message so we include dynamic stop bit with length */
+			val = msg->len | XIIC_TX_DYN_STOP_MASK;
+			xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, val);
+			goto out;
+		}
+	}
+	if (i2c->state == STATE_READ){
+                /* suit for I2C_FUNC_SMBUS_BLOCK_DATA */
+                if (msg->flags & I2C_M_RECV_LEN) {
+                        msg->len = xiic_getreg32(i2c, XIIC_DRR_REG_OFFSET);
+                        msg->flags &= ~I2C_M_RECV_LEN;
+                        msg->buf[i2c->pos++] = msg->len;
+                }
+                else {
+                        msg->buf[i2c->pos++] = xiic_getreg32(i2c, XIIC_DRR_REG_OFFSET);
+                }
+	} else if (i2c->state == STATE_WRITE){
+		/* if it reaches the last byte data to be sent */
+		if ((i2c->pos == msg->len - 1) && (i2c->nmsgs == 1)){
+			val = msg->buf[i2c->pos++] | XIIC_TX_DYN_STOP_MASK;
+			xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, val);
+			i2c->state = STATE_DONE;
+			goto out;
+		/* if it is not the last byte data to be sent */
+		} else if (i2c->pos < msg->len) {
+			xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, msg->buf[i2c->pos++]);
+			goto out;
+		}
+	}
+
+	/* end of msg? */
+	if (i2c->pos == msg->len) {
+		i2c->nmsgs--;
+		i2c->pos = 0;
+		if (i2c->nmsgs) {
+			i2c->msg++;
+			msg = i2c->msg;	
+			if (!(msg->flags & I2C_M_NOSTART)) /* send start? */{
+				i2c->state = STATE_START;			
+				xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, i2c_8bit_addr_from_msg(msg) | XIIC_TX_DYN_START_MASK);
+				goto out;
+			}
+		} else {	/* end? */
+			i2c->state = STATE_DONE;
+			goto out;
+		}
+	}
+
+out:
+	mutex_unlock(&i2c->lock);
+	return ;
+}
+
+static int fpga_axi_iic_poll(struct fpgalogic_i2c *i2c,
+			                  struct i2c_msg *msgs, int num)
+{
+	int ret = 0;
+	// u8 ctrl;
+	
+	mutex_lock(&i2c->lock);
+	/* Soft reset IIC controller. */
+	xiic_setreg32(i2c, XIIC_RESETR_OFFSET, XIIC_RESET_MASK);
+	/* Set receive Fifo depth to maximum (zero based). */
+	xiic_setreg32(i2c, XIIC_RFD_REG_OFFSET, IIC_RX_FIFO_DEPTH - 1);
+		
+	/* Reset Tx Fifo. */
+	xiic_setreg32(i2c, XIIC_CR_REG_OFFSET, XIIC_CR_TX_FIFO_RESET_MASK);
+	
+	/* Enable IIC Device, remove Tx Fifo reset & disable general call. */
+	xiic_setreg32(i2c, XIIC_CR_REG_OFFSET, XIIC_CR_ENABLE_DEVICE_MASK);
+	
+	/* set i2c clock as 100Hz. */
+	//xiic_setreg32(i2c, 0x13c, 0x7C);
+	
+	/* make sure RX fifo is empty */
+	ret = xiic_clear_rx_fifo(i2c);
+	if (ret){
+		mutex_unlock(&i2c->lock);
+		return ret;
+	}
+	
+	i2c->msg = msgs;
+	i2c->pos = 0;
+	i2c->nmsgs = num;
+	i2c->state = STATE_START;
+
+	// printk("STATE: %d\n", i2c->state);
+	
+	if (msgs->len == 0 && num == 1){ /* suit for i2cdetect time sequence */
+		u8 status = xiic_getreg32(i2c, XIIC_IISR_OFFSET);
+		xiic_irq_clr(i2c, status);
+		/* send out the 1st byte data and stop bit */
+		xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, i2c_8bit_addr_from_msg(msgs) | XIIC_TX_DYN_START_MASK | XIIC_TX_DYN_STOP_MASK);
+	} else {
+		/* send out the 1st byte data */
+		xiic_setreg32(i2c, XIIC_DTR_REG_OFFSET, i2c_8bit_addr_from_msg(msgs) | XIIC_TX_DYN_START_MASK);
+	}
+	mutex_unlock(&i2c->lock);
+	while (1) {
+		int err;
+		
+		err = xiic_poll_wait(i2c);
+		if (err) {
+			i2c->state = STATE_ERROR;
+			break;
+		}else if (i2c->state == STATE_DONE){
+			break;
+		}
+		xiic_process(i2c);
+	}
+
+	return (i2c->state == STATE_DONE) ? num : -EIO;
+}
+
+static int fpga_axi_iic_access(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
+{
+    struct fpgalogic_i2c *i2c = i2c_get_adapdata(adap);
+    int err = -EIO;
+	u8 retry = 0, max_retry = 0;
+
+	if(((1 == msgs->len && (msgs->flags & I2C_M_RD))
+		|| (0 == msgs->len && !(msgs->flags & I2C_M_RD)) ) && num == 1 ) /* I2C_SMBUS_QUICK or I2C_SMBUS_BYTE */
+		max_retry = 1;
+	else
+		max_retry = 5;  // retry 5 times if receive a NACK or other errors
+
+	while((-EIO == err) && (retry < max_retry))
+	{
+		err = fpga_axi_iic_poll(i2c, msgs, num);
+		retry++;
+	}
+
+     return err;
 }
 
 /**
  * A callback function show available smbus functions.
  */
-static u32 fpga_i2c_func(struct i2c_adapter *a)
+static u32 fpga_axi_iic_func(struct i2c_adapter *adap)
 {
-    return I2C_FUNC_SMBUS_QUICK  |
-           I2C_FUNC_SMBUS_BYTE      |
-           I2C_FUNC_SMBUS_BYTE_DATA |
-           I2C_FUNC_SMBUS_WORD_DATA |
-           I2C_FUNC_SMBUS_BLOCK_DATA |
-           I2C_FUNC_SMBUS_I2C_BLOCK;
+    /* a typical full-I2C adapter would use the following  */
+    return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
 }
 
-static const struct i2c_algorithm ds3000_i2c_algorithm = {
-    .smbus_xfer = fpga_i2c_access,
-    .functionality  = fpga_i2c_func,
+static const struct i2c_algorithm axi_iic_algorithm = {
+    .master_xfer = fpga_axi_iic_access,
+    .functionality  = fpga_axi_iic_func,
 };
+
+static int xiic_reinit(struct fpgalogic_i2c *i2c)
+{
+	int ret;
+	int val = 0;
+	
+	/* Soft reset IIC controller. */
+	xiic_setreg32(i2c, XIIC_RESETR_OFFSET, XIIC_RESET_MASK);
+	
+	/* Set receive Fifo depth to maximum (zero based). */
+	xiic_setreg32(i2c, XIIC_RFD_REG_OFFSET, IIC_RX_FIFO_DEPTH - 1);
+
+	/* Reset Tx Fifo. */
+	xiic_setreg32(i2c, XIIC_CR_REG_OFFSET, XIIC_CR_TX_FIFO_RESET_MASK);
+
+	/* Enable IIC Device, remove Tx Fifo reset & disable general call. */
+	val |= XIIC_CR_ENABLE_DEVICE_MASK;
+	//val |= XIIC_CR_TX_FIFO_RESET_MASK;
+	//val |= XIIC_CR_MSMS_MASK;
+	val |= XIIC_CR_DIR_IS_TX_MASK;
+	xiic_setreg32(i2c, XIIC_CR_REG_OFFSET, val);
+
+	/* make sure RX fifo is empty */
+	ret = xiic_clear_rx_fifo(i2c);
+	if (ret)
+		return ret;
+
+	return 0;
+}
 
 static int fpgai2c_init(struct fpgalogic_i2c *i2c)
 {
-    iowrite8(I2C_FREQ_400K, I2C_MASTER_FREQ_1 + i2c->base );
+    // int prescale;
+    // int diff;
+    // u8 ctrl;
+	int ret;
+
+	
+    //i2c->reg_set = xiic_setreg32;
+    //i2c->reg_get = xiic_getreg32;
+	
+	ret = xiic_reinit(i2c);
+	if (ret < 0) {
+		printk("Cannot xiic_reinit\n");
+		return ret;
+	}
+
+    /* Initialize interrupt handlers if not already done */
     init_waitqueue_head(&i2c->wait);
     return 0;
 };
@@ -538,12 +558,11 @@ static int adap_data_init(struct i2c_adapter *adap, int i2c_ch_index)
         return -1;
     }
 
+#ifdef __STDC_LIB_EXT1__
+    memset_s(&fpgalogic_i2c[i2c_ch_index], sizeof(fpgalogic_i2c[0]), 0, sizeof(fpgalogic_i2c[0]));
+#else
     memset(&fpgalogic_i2c[i2c_ch_index], 0, sizeof(fpgalogic_i2c[0]));
-//    fpgalogic_i2c[i2c_ch_index].reg_shift = 0; /* 8 bit registers */
-//    fpgalogic_i2c[i2c_ch_index].reg_io_width = 1; /* 8 bit read/write */
-      fpgalogic_i2c[i2c_ch_index].timeout = 12; //1000;//1ms
-//    fpgalogic_i2c[i2c_ch_index].ip_clock_khz = 100000;//100000;/* input clock of 100MHz */
-//    fpgalogic_i2c[i2c_ch_index].bus_clock_khz = 100;
+#endif
     fpgalogic_i2c[i2c_ch_index].base = pci_privdata->fpga_i2c_ch_base_addr +
                           i2c_ch_index* pci_privdata->fpga_i2c_ch_size;
     mutex_init(&fpgalogic_i2c[i2c_ch_index].lock);
@@ -554,12 +573,12 @@ static int adap_data_init(struct i2c_adapter *adap, int i2c_ch_index)
     return 0;
 }
 
-static int pddf_i2c_pci_add_numbered_bus_ds3000 (struct i2c_adapter *adap, int i2c_ch_index)
+static int pddf_i2c_pci_add_numbered_bus_default (struct i2c_adapter *adap, int i2c_ch_index)
 {
     int ret = 0;
 
     adap_data_init(adap, i2c_ch_index);
-    adap->algo  = &ds3000_i2c_algorithm;
+    adap->algo  = &axi_iic_algorithm;
     ret = i2c_add_numbered_adapter(adap);
     return ret;
 }
@@ -585,7 +604,7 @@ static int board_i2c_fpgapci_write(uint32_t offset, uint32_t value)
 static int __init pddf_custom_fpga_algo_init(void)
 {
     pddf_dbg(FPGA, KERN_INFO "[%s]\n", __FUNCTION__);
-    pddf_i2c_pci_add_numbered_bus = &pddf_i2c_pci_add_numbered_bus_ds3000;
+    pddf_i2c_pci_add_numbered_bus = &pddf_i2c_pci_add_numbered_bus_default;
     ptr_fpgapci_read = board_i2c_fpgapci_read;
     ptr_fpgapci_write = board_i2c_fpgapci_write;
     return 0;
@@ -602,7 +621,6 @@ static void __exit pddf_custom_fpga_algo_exit(void)
 module_init(pddf_custom_fpga_algo_init);
 module_exit(pddf_custom_fpga_algo_exit);
 
-MODULE_AUTHOR("Eric Zhu <erzhu@celestica.com>");
-MODULE_DESCRIPTION("Celestica ds3000 pddf fpga driver");
-MODULE_VERSION(MOD_VERSION);
+MODULE_DESCRIPTION("Module driver algorithm for 7021 FPGAPCIe AXI IIC");
+MODULE_VERSION("1.0.0");
 MODULE_LICENSE("GPL");
