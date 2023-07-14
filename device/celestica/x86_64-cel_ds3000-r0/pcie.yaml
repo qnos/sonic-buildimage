@@ -17,23 +17,41 @@
   name: 'Generic system peripheral [0807]: Intel Corporation Atom Processor C3000
     Series Root Complex Event Collector (rev 11)'
 - bus: '00'
+  dev: '06'
+  fn: '0'
+  id: 19a3
+  name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series Integrated QAT
+    Root Port (rev 11)'
+- bus: '00'
   dev: 09
   fn: '0'
   id: 19a4
   name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
     Port #0 (rev 11)'
 - bus: '00'
+  dev: 0b
+  fn: '0'
+  id: 19a6
+  name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
+    Port #2 (rev 11)'
+- bus: '00'
+  dev: 0c
+  fn: '0'
+  id: 19a7
+  name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
+    Port #3 (rev 11)'
+- bus: '00'
+  dev: 0e
+  fn: '0'
+  id: 19a8
+  name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
+    Port #4 (rev 11)'
+- bus: '00'
   dev: '10'
   fn: '0'
   id: 19aa
   name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
     Port #6 (rev 11)'
-- bus: '00'
-  dev: '11'
-  fn: '0'
-  id: 19ab
-  name: 'PCI bridge: Intel Corporation Atom Processor C3000 Series PCI Express Root
-    Port #7 (rev 11)'
 - bus: '00'
   dev: '12'
   fn: '0'
@@ -114,28 +132,34 @@
 - bus: '01'
   dev: '00'
   fn: '0'
-  id: b870
-  name: 'Ethernet controller: Broadcom Inc. and subsidiaries Device b870 (rev 01)'
+  id: 19e2
+  name: 'Co-processor: Intel Corporation Atom Processor C3000 Series QuickAssist Technology
+    (rev 11)'
 - bus: '02'
   dev: '00'
   fn: '0'
-  id: '7021'
-  name: 'Memory controller: Xilinx Corporation Device 7021'
+  id: b870
+  name: 'Ethernet controller: Broadcom Inc. and subsidiaries Device b870 (rev 01)'
 - bus: '03'
   dev: '00'
   fn: '0'
   id: '1533'
   name: 'Ethernet controller: Intel Corporation I210 Gigabit Network Connection (rev
     03)'
-- bus: '04'
+- bus: '06'
   dev: '00'
   fn: '0'
-  id: 15c3
+  id: '7021'
+  name: 'Memory controller: Xilinx Corporation Device 7021'
+- bus: '07'
+  dev: '00'
+  fn: '0'
+  id: 15c2
   name: 'Ethernet controller: Intel Corporation Ethernet Connection X553 Backplane
     (rev 11)'
-- bus: '04'
+- bus: '07'
   dev: '00'
   fn: '1'
-  id: 15c3
+  id: 15c2
   name: 'Ethernet controller: Intel Corporation Ethernet Connection X553 Backplane
     (rev 11)'
