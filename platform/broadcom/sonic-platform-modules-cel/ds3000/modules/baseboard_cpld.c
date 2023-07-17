@@ -36,6 +36,7 @@
 #define VERSION_ADDR 0xA100
 #define SCRATCH_ADDR 0xA101
 #define SYS_LED_ADDR 0xA162
+#define CARD_PRES_ADDR 0xA108
 
 #define CPLD_REGISTER_SIZE 0x77
 
@@ -277,6 +278,26 @@ static ssize_t sys_led_color_store(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR_RW(sys_led_color);
 
+/**
+ * Show BMC card presence
+ * @param  dev     kernel device
+ * @param  devattr kernel device attribute
+ * @param  buf     buffer for get value
+ * @return         string absent or present of BMC card.
+ */
+static ssize_t bmc_presence_show(struct device *dev, struct device_attribute *devattr,
+                char *buf)
+{
+    unsigned char data = 0;
+    mutex_lock(&cpld_data->cpld_lock);
+    data = inb(CARD_PRES_ADDR);
+    mutex_unlock(&cpld_data->cpld_lock);
+    data = data & 0x1;
+    return sprintf(buf, "%s\n",
+            data == 0x01 ? "absent" : "present");
+}
+static DEVICE_ATTR_RO(bmc_presence);
+
 static struct attribute *baseboard_cpld_attrs[] = {
     &dev_attr_version.attr,
     &dev_attr_scratch.attr,
@@ -284,6 +305,7 @@ static struct attribute *baseboard_cpld_attrs[] = {
     &dev_attr_setreg.attr,
     &dev_attr_sys_led.attr,
     &dev_attr_sys_led_color.attr,
+    &dev_attr_bmc_presence.attr,
     NULL,
 };
 
