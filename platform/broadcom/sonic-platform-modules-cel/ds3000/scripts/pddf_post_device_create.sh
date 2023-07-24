@@ -1,6 +1,10 @@
 #!/bin/bash
+
+declare -r CPLD_SETREG="/sys/bus/platform/devices/baseboard/setreg"
+declare -r CPLD_GETREG="/sys/bus/platform/devices/baseboard/getreg"
+
 # Set SYS_LED to Green, assuming everything came up fine.
-ipmitool raw 0x3A 0x39 0x02 0x00 0x02
+echo "0xa162 0xdc" > ${CPLD_SETREG}
 
 # Enable thermal shutdown by default
-#i2cset -y -f 103 0x0d 0x75 0x1
+echo "0xa175 0x1" > ${CPLD_SETREG}

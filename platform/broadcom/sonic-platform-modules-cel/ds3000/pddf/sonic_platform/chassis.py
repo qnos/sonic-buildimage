@@ -8,14 +8,16 @@ try:
     import os
     import subprocess
     from .event import XcvrEvent
+    from .helper import APIHelper
     from sonic_py_common import logger
     from sonic_platform_pddf_base.pddf_chassis import PddfChassis
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
 
-CPLD_VERSION_CMD = "i2cget -y -f 103 0x0d 0x00 b"
-REBOOT_REASON_CMD = "i2cget -y -f 103 0x0d 0x06 b"
-SYS_LED_COLOR_SET_CMD = "ipmitool raw 0x3a 0x39 0x00 {}"
+RESET_SOURCE_OS_REG = '0xa106'
+LPC_SYSLED_REG = '0xa162'
+LPC_GETREG_PATH = "/sys/bus/platform/devices/baseboard/getreg"
+LPC_SETREG_PATH = "/sys/bus/platform/devices/baseboard/setreg"
 LED_CTRL_MODE_GET_CMD = "ipmitool raw 0x3a 0x42 0x01"
 
 SYSLOG_IDENTIFIER = "Chassis"
@@ -36,30 +38,19 @@ class Chassis(PddfChassis):
     SYS_LED_COLOR_GREEN_BLINK_4HZ = 0x6
     SYS_LED_COLOR_GREEN_BLINK_1HZ = 0x5
 
+    sysled_color_map = {
+        SYS_LED_COLOR_OFF: '0xff',
+        SYS_LED_COLOR_GREEN: '0xdc',
+        SYS_LED_COLOR_AMBER: '0xec',
+        SYS_LED_COLOR_AMBER_BLINK_4HZ: '0xee',
+        SYS_LED_COLOR_AMBER_BLINK_1HZ: '0xed',
+        SYS_LED_COLOR_GREEN_BLINK_4HZ: '0xde',
+        SYS_LED_COLOR_GREEN_BLINK_1HZ: '0xdd'
+    }
+
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
-        self.baseboard_cpld_ver = 0
-        """
-        if os.getuid() == 0:
-            status, cpld_ver = self._getstatusoutput(CPLD_VERSION_CMD)
-        else:
-            status, cpld_ver = self._getstatusoutput("sudo " + CPLD_VERSION_CMD)
-        if status != 0:
-            pass
-        self.baseboard_cpld_ver = int(cpld_ver, 16)
-        """
-
-    def _getstatusoutput(self, cmd):
-        try:
-            data = subprocess.check_output(cmd, shell=True,
-                    universal_newlines=True, stderr=subprocess.STDOUT)
-            status = 0
-        except subprocess.CalledProcessError as ex:
-            data = ex.output
-            status = ex.returncode
-        if data[-1:] == '\n':
-            data = data[:-1]
-        return status, data
+        self._api_helper = APIHelper()
 
     def initizalize_system_led(self):
         """
@@ -112,20 +103,22 @@ class Chassis(PddfChassis):
             helper_logger.log_error("SYS LED color {} not support!".format(color))
             return False
 
-        cmd = SYS_LED_COLOR_SET_CMD.format(color_val)
-        led_mode_cmd = LED_CTRL_MODE_GET_CMD
-        if os.getuid() != 0:
-            cmd = "sudo " + cmd
-            led_mode_cmd = "sudo " + led_mode_cmd
-        status, mode = self._getstatusoutput(led_mode_cmd)
-        # led take automatic control mode, led not settable
-        if status != 0 or mode.strip() == "01":
-            helper_logger.log_info("SYS LED takes automatic ctrl mode!")
-            return False
-        status, _ = self._getstatusoutput(cmd)
-        if status != 0:
-            return False
-        return True
+        if self._api_helper.is_bmc_present():
+            led_mode_cmd = LED_CTRL_MODE_GET_CMD
+            if os.getuid() != 0:
+                cmd = "sudo " + cmd
+                led_mode_cmd = "sudo " + led_mode_cmd
+            status, mode = self._api_helper.get_cmd_output(led_mode_cmd)
+            # led take automatic control mode, led not settable
+            if status != 0 or mode.strip() == "01":
+                helper_logger.log_info("SYS LED takes automatic ctrl mode!")
+                return False
+
+        # Set SYS_LED through baseboard cpld
+        color_map_val = self.sysled_color_map.get(color_val)
+        status = self._api_helper.lpc_setreg(LPC_SETREG_PATH, LPC_SYSLED_REG, color_map_val)
+
+        return status
 
     def get_sfp(self, index):
         """
@@ -161,50 +154,40 @@ class Chassis(PddfChassis):
             is "REBOOT_CAUSE_HARDWARE_OTHER", the second string can be used
             to pass a description of the reboot cause.
         """
-        # Newer baseboard CPLD to get reboot cause from CPLD register
-        if self.baseboard_cpld_ver >= 0x18:
-            hw_reboot_cause = ""
-            if os.getuid == 0:
-                status, hw_reboot_cause = self._getstatusoutput(REBOOT_REASON_CMD)
-            else:
-                status, hw_reboot_cause = self._getstatusoutput("sudo " + REBOOT_REASON_CMD)
-            if status != 0:
-                pass
+        hw_reboot_cause = self._api_helper.lpc_getreg(LPC_GETREG_PATH, RESET_SOURCE_OS_REG)
 
-            if hw_reboot_cause == "0x99":
-                reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_ASIC
-                description = 'ASIC Overload Reboot'
-            elif hw_reboot_cause == "0x88":
-                reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU
-                description = 'CPU Overload Reboot'
-            elif hw_reboot_cause == "0x77":
-                reboot_cause = self.REBOOT_CAUSE_WATCHDOG
-                description = 'Hardware Watchdog Reset'
-            elif hw_reboot_cause == "0x55":
-                reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
-                description = 'CPU Cold Reset'
-            elif hw_reboot_cause == "0x44":
-                reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
-                description = 'CPU Warm Reset'
-            elif hw_reboot_cause == "0x33":
-                reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
-                description = 'Soft-Set Cold Reset'
-            elif hw_reboot_cause == "0x22":
-                reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
-                description = 'Soft-Set Warm Reset'
-            elif hw_reboot_cause == "0x11":
-                reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
-                description = 'Power Off Reset'
-            elif hw_reboot_cause == "0x00":
-                reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
-                description = 'Power Cycle Reset'
-            else:
-                reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
-                description = 'Hardware reason'
-
-            return (reboot_cause, description)
+        if hw_reboot_cause == "0x99":
+            reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_ASIC
+            description = 'ASIC Overload Reboot'
+        elif hw_reboot_cause == "0x88":
+            reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU
+            description = 'CPU Overload Reboot'
+        elif hw_reboot_cause == "0x66":
+            reboot_cause = self.REBOOT_CAUSE_WATCHDOG
+            description = 'Hardware Watchdog Reset'
+        elif hw_reboot_cause == "0x55":
+            reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
+            description = 'CPU Cold Reset'
+        elif hw_reboot_cause == "0x44":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'CPU Warm Reset'
+        elif hw_reboot_cause == "0x33":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Soft-Set Cold Reset'
+        elif hw_reboot_cause == "0x22":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Soft-Set Warm Reset'
+        elif hw_reboot_cause == "0x11":
+            reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
+            description = 'Power Off Reset'
+        elif hw_reboot_cause == "0x00":
+            reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
+            description = 'Power Cycle Reset'
         else:
-            return PddfChassis.get_reboot_cause()
+            reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
+            description = 'Hardware reason'
+
+        return (reboot_cause, description)
 
     def get_watchdog(self):
         """
@@ -216,14 +199,9 @@ class Chassis(PddfChassis):
         """
         try:
             if self._watchdog is None:
-                if self.baseboard_cpld_ver >= 0x18:
-                    from sonic_platform.cpld_watchdog import Watchdog
-                    # Create the watchdog Instance from cpld watchdog
-                    self._watchdog = Watchdog()
-                else:
-                    from sonic_platform.watchdog import Watchdog
-                    # Create the watchdog Instance
-                    self._watchdog = Watchdog()
+                from sonic_platform.cpld_watchdog import Watchdog
+                # Create the watchdog Instance from cpld watchdog
+                self._watchdog = Watchdog()
 
         except Exception as e:
             helper_logger.log_error("Fail to load watchdog due to {}".format(e))

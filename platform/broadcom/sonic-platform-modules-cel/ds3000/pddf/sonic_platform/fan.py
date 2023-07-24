@@ -1,6 +1,7 @@
 import os
 
 try:
+    from .helper import APIHelper
     from sonic_platform_pddf_base.pddf_fan import PddfFan
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
@@ -9,9 +10,23 @@ except ImportError as e:
 class Fan(PddfFan):
     """PDDF Platform-Specific Fan class"""
 
+    BMC_FAN_FSC_STATUS_CMD = "ipmitool raw 0x3a 0x26 0x00"
+    LPC_CPLD_SETREG_PATH = "/sys/bus/platform/devices/baseboard/setreg"
+    FAN_PWM_CTRL_REG_MAP = {
+        1: '0xa1b2',
+        2: '0xa1b2',
+        3: '0xa1b8',
+        4: '0xa1b8',
+        5: '0xa1be',
+        6: '0xa1be',
+        7: '0xa1c4',
+        8: '0xa1c4'
+    }
+
     def __init__(self, tray_idx, fan_idx=0, pddf_data=None, pddf_plugin_data=None, is_psu_fan=False, psu_index=0):
         # idx is 0-based
         PddfFan.__init__(self, tray_idx, fan_idx, pddf_data, pddf_plugin_data, is_psu_fan, psu_index)
+        self._api_helper = APIHelper()
 
     def get_presence(self):
         """
@@ -47,7 +62,7 @@ class Fan(PddfFan):
         target_speed = 0
         if self.is_psu_fan:
             # Target speed not usually supported for PSU fans
-            raise NotImplementedError
+            return 'N/A'
         else:
             speed_rpm = self.get_speed_rpm()
             max_fan_rpm = eval(self.plugin_data['FAN']['FAN_MAX_RPM_SPEED'])
@@ -81,7 +96,7 @@ class Fan(PddfFan):
             speed_percentage = round((speed*100)/max_speed)
             return speed_percentage
         else:
-            # Get fan rpm instead of fan pwm through ipmitool
+            # Get fan rpm instead of fan pwm
             idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
             attr = "fan" + str(idx) + "_pwm"
             output = self.pddf_obj.get_attr_name_output("FAN-CTRL", attr)
@@ -114,27 +129,29 @@ class Fan(PddfFan):
         if self.is_psu_fan:
             print("Setting PSU fan speed is not allowed")
             return False
-        else:
-            if speed < 0 or speed > 100:
-                print("Error: Invalid speed %d. Please provide a valid speed percentage" % speed)
+
+        if speed < 0 or speed > 100:
+            print("Error: Invalid speed %d. Please provide a valid speed percentage" % speed)
+            return False
+
+        if 'duty_cycle_to_pwm' not in self.plugin_data['FAN']:
+            print("Setting fan speed is not allowed !")
+            return False
+
+        duty_cycle_to_pwm = eval(self.plugin_data['FAN']['duty_cycle_to_pwm'])
+        pwm = int(round(duty_cycle_to_pwm(speed)))
+
+        if self._api_helper.is_bmc_present():
+            status, data = self._api_helper.get_cmd_output(self.BMC_FAN_FSC_STATUS_CMD)
+            if status != 0:
+                print("Error: failed to get BMC FSC status")
+                return False
+            if data == '01':
+                # Enable BMC FSC mode
                 return False
 
-            if 'duty_cycle_to_pwm' not in self.plugin_data['FAN']:
-                print("Setting fan speed is not allowed !")
-                return False
-            else:
-                duty_cycle_to_pwm = eval(self.plugin_data['FAN']['duty_cycle_to_pwm'])
-                pwm = int(round(duty_cycle_to_pwm(speed)))
+        # Set FAN PWM through baseboard CPLD
+        reg = self.FAN_PWM_CTRL_REG_MAP.get(self.fan_index)
+        status = self._api_helper.lpc_setreg(self.LPC_CPLD_SETREG_PATH, reg, hex(pwm))
 
-                if speed == 0:
-                    # Enable FCS auto control mode
-                    bmc_cmd = "ipmitool raw 0x3a 0x26 0x1 0x1"
-                else:
-                    bmc_cmd = "ipmitool raw 0x3a 0x26 0x1 0x0 && ipmitool raw 0x3a 0x26 0x2 0xfe {}".format(hex(pwm))
-                try:
-                    p = os.popen(bmc_cmd)
-                    p.close()
-                except IOError:
-                    return False
-
-                return True
+        return status
