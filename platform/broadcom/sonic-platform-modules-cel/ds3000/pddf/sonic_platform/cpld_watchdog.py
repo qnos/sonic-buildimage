@@ -5,103 +5,92 @@
 # Watchdog contains an implementation of SONiC Platform Base Watchdog API
 #
 #############################################################################
-import ctypes
-import fcntl
-import os
-import subprocess
-import time
-import array
-import syslog
-
 try:
+    import ctypes
+    import fcntl
+    import os
+    import subprocess
+    import time
+    import array
+    import syslog
+    from .helper import APIHelper
     from sonic_platform_base.watchdog_base import WatchdogBase
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
 
-I2C_WDT_BUS_ID=103
-I2C_WDT_DEV_ID=0x0d
-I2C_WDT_RESET_SRC_REG=0x06
-I2C_WDT_CTRL_REG=0x81
-I2C_WDT_SET_TIMER_L_REG=0x82
-I2C_WDT_SET_TIMER_M_REG=0x83
-I2C_WDT_SET_TIMER_H_REG=0x84
-I2C_WDT_ARM_REG=0x85
-I2C_WDT_TIMER_L_REG=0x86
-I2C_WDT_TIMER_M_REG=0x87
-I2C_WDT_TIMER_H_REG=0x88
+LPC_CPLD_GETREG_PATH = "/sys/bus/platform/devices/baseboard/getreg"
+LPC_CPLD_SETREG_PATH = "/sys/bus/platform/devices/baseboard/setreg"
+LPC_WDT_SET_TIMER_L_REG = '0xa183'
+LPC_WDT_SET_TIMER_M_REG = '0xa182'
+LPC_WDT_SET_TIMER_H_REG = '0xa181'
+LPC_WDT_TIMER_L_REG = '0xa186'
+LPC_WDT_TIMER_M_REG = '0xa185'
+LPC_WDT_TIMER_H_REG = '0xa184'
+LPC_WDT_CTRL_REG = '0xa187'
+LPC_WDT_ARM_REG = '0xa188'
 
-WDT_ENABLE=0x1
-WDT_DISABLE=0x0
-WDT_KEEPALIVE=0x1
-WDT_COMMON_ERROR=-1
-DEFAULT_TIMEOUT=180
+WDT_ENABLE = 0x1
+WDT_DISABLE = 0x0
+WDT_COMMON_ERROR = -1
+DEFAULT_TIMEOUT = 180
 
 class CpldWatchdog(WatchdogBase):
 
     def __init__(self):
+        WatchdogBase.__init__(self)
         # Set default value
+        self._api_helper = APIHelper()
+        self._ka_count = int(1)
         self.armed = True if self._active() else False
-        self.timeout = DEFAULT_TIMEOUT
+        self.timeout = self._gettimeout() if self.armed else DEFAULT_TIMEOUT
         #self._disable()
 
-    def _i2cget_cmd(self, reg):
-        cmd = "i2cget -y -f {} {} {} b".format(I2C_WDT_BUS_ID, I2C_WDT_DEV_ID,
-                reg)
-        return cmd
+    def _lpc_get(self, reg):
+        return self._api_helper.lpc_getreg(LPC_CPLD_GETREG_PATH, reg)
 
-    def _i2cset_cmd(self, reg, val):
-        cmd = "i2cset -y -f {} {} {} {}".format(I2C_WDT_BUS_ID, I2C_WDT_DEV_ID,
-                reg, val)
-        return cmd
-
-    def _getstatusoutput(self, cmd):
-        try:
-            data = subprocess.check_output(cmd, shell=True,
-                    universal_newlines=True, stderr=subprocess.STDOUT)
-            status = 0
-        except subprocess.CalledProcessError as ex:
-            data = ex.output
-            status = ex.returncode
-        if data[-1:] == '\n':
-            data = data[:-1]
-        return status, data
+    def _lpc_set(self, reg, val):
+        if type(val) is int:
+            val = hex(val)
+        return self._api_helper.lpc_setreg(LPC_CPLD_SETREG_PATH, reg, val)
 
     def _active(self):
         """
         WDT is active or not
         """
-        status, data = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_CTRL_REG))
-        if status:
-            pass
+        data = self._lpc_get(LPC_WDT_CTRL_REG)
         return True if data == "0x01" else False
 
     def _enable(self):
         """
         Turn on the watchdog timer
         """
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_CTRL_REG,
-            WDT_ENABLE))
-        if status:
+        status = self._lpc_set(LPC_WDT_CTRL_REG, WDT_ENABLE)
+        if not status:
             pass
 
     def _disable(self):
         """
         Turn off the watchdog timer
         """
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_CTRL_REG,
-            WDT_DISABLE))
-        if status:
+        status = self._lpc_set(LPC_WDT_CTRL_REG, WDT_DISABLE)
+        if not status:
             pass
 
     def _keepalive(self):
         """
         Keep alive watchdog timer
         """
-        self._settimeleft(0)
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_ARM_REG,
-            WDT_KEEPALIVE))
-        if status:
-            pass
+        if bool(self._ka_count % 2):
+            status = self._lpc_set(LPC_WDT_ARM_REG, WDT_ENABLE)
+        else:
+            status = self._lpc_set(LPC_WDT_ARM_REG, WDT_DISABLE)
+
+        if not status:
+            syslog.syslog(syslog.LOG_ERR, "Feed Watchdog failed")
+
+        self._ka_count = self._ka_count + 1
+        if (self._ka_count >= 11):
+            self._ka_count = 1
 
     def _settimeout(self, seconds):
         """
@@ -113,18 +102,9 @@ class CpldWatchdog(WatchdogBase):
         ms_low_byte = ms & 0xff
         ms_media_byte = (ms >> 8) & 0xff
         ms_high_byte = (ms >> 16) & 0xff
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_SET_TIMER_L_REG,
-            ms_low_byte))
-        if status:
-            pass
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_SET_TIMER_M_REG,
-            ms_media_byte))
-        if status:
-            pass
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_SET_TIMER_H_REG,
-            ms_high_byte))
-        if status:
-            pass
+        self._lpc_set(LPC_WDT_SET_TIMER_L_REG, ms_low_byte)
+        self._lpc_set(LPC_WDT_SET_TIMER_M_REG, ms_media_byte)
+        self._lpc_set(LPC_WDT_SET_TIMER_H_REG, ms_high_byte)
         return self._gettimeout()
 
     def _gettimeout(self):
@@ -133,43 +113,13 @@ class CpldWatchdog(WatchdogBase):
         @return watchdog timeout
         """
         data = [0, 0, 0]
-        status, data[0] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_SET_TIMER_L_REG))
-        if status:
-            pass
-        status, data[1] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_SET_TIMER_M_REG))
-        if status:
-            pass
-        status, data[2] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_SET_TIMER_H_REG))
-        if status:
-            pass
+        data[0] = self._lpc_get(LPC_WDT_SET_TIMER_L_REG)
+        data[1] = self._lpc_get(LPC_WDT_SET_TIMER_M_REG)
+        data[2] = self._lpc_get(LPC_WDT_SET_TIMER_H_REG)
         seconds = int((int(data[2], 16) << 16
                 | int(data[1], 16) << 8
                 | int(data[0], 16)) / 1000)
-
-        return seconds
-
-    def _settimeleft(self, seconds):
-        """
-        Set watchdog timer timeout
-        @param seconds - timeout in seconds
-        @return is the actual set timeout
-        """
-        ms = seconds * 1000
-        ms_low_byte = ms & 0xff
-        ms_media_byte = (ms >> 8) & 0xff
-        ms_high_byte = (ms >> 16) & 0xff
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_TIMER_L_REG,
-            ms_low_byte))
-        if status:
-            pass
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_TIMER_M_REG,
-            ms_media_byte))
-        if status:
-            pass
-        status, data = self._getstatusoutput(self._i2cset_cmd(I2C_WDT_TIMER_H_REG,
-            ms_high_byte))
-        if status:
-            pass
+        return seconds if self._active() else -1
 
     def _gettimeleft(self):
         """
@@ -177,20 +127,14 @@ class CpldWatchdog(WatchdogBase):
         @return time left in seconds
         """
         data = [0, 0, 0]
-        status, data[0] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_TIMER_L_REG))
-        if status:
-            pass
-        status, data[1] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_TIMER_M_REG))
-        if status:
-            pass
-        status, data[2] = self._getstatusoutput(self._i2cget_cmd(I2C_WDT_TIMER_H_REG))
-        if status:
-            pass
+        data[0] = self._lpc_get(LPC_WDT_TIMER_L_REG)
+        data[1] = self._lpc_get(LPC_WDT_TIMER_M_REG)
+        data[2] = self._lpc_get(LPC_WDT_TIMER_H_REG)
         seconds = int((int(data[2], 16) << 16
                 | int(data[1], 16) << 8
                 | int(data[0], 16)) / 1000)
 
-        return (self.timeout - seconds) if (self.timeout > seconds) else -1
+        return seconds
 
     #################################################################
 
