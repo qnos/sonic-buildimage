@@ -27,25 +27,26 @@ class Chassis(PddfChassis):
     """
     PDDF Platform-specific Chassis class
     """
-    # SYS LED color defines
-    SYS_LED_COLOR_OFF = 0x0
-    SYS_LED_COLOR_GREEN = 0x1
-    SYS_LED_COLOR_AMBER = 0x2
-    SYS_LED_COLOR_AMBER_BLINK = 0x3
-    SYS_LED_COLOR_AMBER_BLINK_4HZ = 0x4
-    SYS_LED_COLOR_AMBER_BLINK_1HZ = 0x3
-    SYS_LED_COLOR_GREEN_BLINK = 0x5
-    SYS_LED_COLOR_GREEN_BLINK_4HZ = 0x6
-    SYS_LED_COLOR_GREEN_BLINK_1HZ = 0x5
+    SYSLED_COLOR_VAL_MAP = {
+        'off': '0xff',
+        'green': '0xdc',
+        'amber': '0xec',
+        'amber_blink': '0xee',
+        'amber_blink_4hz': '0xee',
+        'amber_blink_1hz': '0xed',
+        'green_blink': '0xde',
+        'green_blink_4hz': '0xde',
+        'green_blink_1hz': '0xdd'
+    }
 
-    sysled_color_map = {
-        SYS_LED_COLOR_OFF: '0xff',
-        SYS_LED_COLOR_GREEN: '0xdc',
-        SYS_LED_COLOR_AMBER: '0xec',
-        SYS_LED_COLOR_AMBER_BLINK_4HZ: '0xee',
-        SYS_LED_COLOR_AMBER_BLINK_1HZ: '0xed',
-        SYS_LED_COLOR_GREEN_BLINK_4HZ: '0xde',
-        SYS_LED_COLOR_GREEN_BLINK_1HZ: '0xdd'
+    SYSLED_VAL_COLOR_MAP = {
+        '0xff': 'off',
+        '0xdc': 'green',
+        '0xec': 'amber',
+        '0xee': 'amber_blink_4hz',
+        '0xed': 'amber_blink_1hz',
+        '0xde': 'green_blink_4hz',
+        '0xdd': 'green_blink_1hz'
     }
 
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
@@ -69,7 +70,9 @@ class Chassis(PddfChassis):
             A string, one of the valid LED color strings which could be vendor
             specified.
         """
-        return PddfChassis.get_status_led(self, "SYS_LED")
+        led_status = self._api_helper.lpc_getreg(LPC_GETREG_PATH, LPC_SYSLED_REG)
+        color = self.SYSLED_VAL_COLOR_MAP.get(led_status, 'unknown')
+        return color
 
     def set_status_led(self, color):
         """
@@ -80,29 +83,6 @@ class Chassis(PddfChassis):
         Returns:
             bool: True if system LED state is set successfully, False if not
         """
-        color_val = self.SYS_LED_COLOR_GREEN
-        if color == "off":
-            color_val = self.SYS_LED_COLOR_OFF
-        elif color == "amber":
-            color_val = self.SYS_LED_COLOR_AMBER
-        elif color == "amber_blink":
-            color_val = self.SYS_LED_COLOR_AMBER_BLINK
-        elif color == "amber_blink_4hz":
-            color_val = self.SYS_LED_COLOR_AMBER_BLINK_4HZ
-        elif color == "amber_blink_1hz":
-            color_val = self.SYS_LED_COLOR_AMBER_BLINK_1HZ
-        elif color == "green":
-            color_val = self.SYS_LED_COLOR_GREEN
-        elif color == "green_blink":
-            color_val = self.SYS_LED_COLOR_GREEN_BLINK
-        elif color == "green_blink_4hz":
-            color_val = self.SYS_LED_COLOR_GREEN_BLINK_4HZ
-        elif color == "green_blink_1hz":
-            color_val = self.SYS_LED_COLOR_GREEN_BLINK_1HZ
-        else:
-            helper_logger.log_error("SYS LED color {} not support!".format(color))
-            return False
-
         if self._api_helper.is_bmc_present():
             led_mode_cmd = LED_CTRL_MODE_GET_CMD
             if os.getuid() != 0:
@@ -115,8 +95,12 @@ class Chassis(PddfChassis):
                 return False
 
         # Set SYS_LED through baseboard cpld
-        color_map_val = self.sysled_color_map.get(color_val)
-        status = self._api_helper.lpc_setreg(LPC_SETREG_PATH, LPC_SYSLED_REG, color_map_val)
+        color_val = self.SYSLED_COLOR_VAL_MAP.get(color, None)
+        if color_val == None:
+            helper_logger.log_error("SYS LED color {} not support!".format(color))
+            return False
+
+        status = self._api_helper.lpc_setreg(LPC_SETREG_PATH, LPC_SYSLED_REG, color_val)
 
         return status
 
@@ -242,3 +226,19 @@ class Chassis(PddfChassis):
             return True, {'sfp': sfp_event}
 
         return False, {'sfp': {}}
+
+    def get_serial(self):
+        """
+        Retrieves the serial number of the chassis (Service tag)
+        Returns:
+            string: Serial number of chassis
+        """
+        return self._eeprom.serial_number_str()
+
+    def get_revision(self):
+        """
+        Retrieves the hardware revision for the chassis
+        Returns:
+            A string containing the hardware revision for this chassis.
+        """
+        return self._eeprom.revision_str()

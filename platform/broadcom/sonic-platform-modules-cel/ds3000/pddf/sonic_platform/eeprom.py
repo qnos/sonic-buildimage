@@ -65,3 +65,11 @@ class Eeprom(PddfEeprom):
 
 
     # Provide the functions/variables below for which implementation is to be overwritten
+    def revision_str(self):
+        (is_valid, results) = self.get_tlv_field(self.eeprom_data, self._TLV_CODE_DEVICE_VERSION)
+        if not is_valid:
+            "N/A"
+        if type(results[2]) is bytearray:
+            return str(int.from_bytes(results[2], byteorder='little'))
+
+        return results[2].decode('ascii')

@@ -93,7 +93,7 @@
         "comp_attr":{ "name": "BaseBoard_CPLD", "type": "cpld", "description": "Base Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "ipmitool raw 0x3A 0x64 0x00 0x01 0x0 | tr a-z A-Z" }
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/version | sed 's/0x//'" }
         ]
     },
     "COMPONENT4":
@@ -101,7 +101,7 @@
         "comp_attr":{ "name": "SwitchBoard_CPLD1", "type": "cpld", "description":"Switch Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x31 0 | tr a-z A-Z | cut -d 'X' -f 2" }
+            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x30 0 | tr a-z A-Z | cut -d 'X' -f 2" }
         ]
     },
     "COMPONENT5":
@@ -109,7 +109,7 @@
         "comp_attr":{ "name": "SwitchBoard_CPLD2", "type": "cpld", "description":"Switch Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x32 0 | tr a-z A-Z | cut -d 'X' -f 2" }
+            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x31 0 | tr a-z A-Z | cut -d 'X' -f 2" }
         ]
     },
     "COMPONENT6":
@@ -143,14 +143,14 @@
             "topo_info": {"dev_addr": "0x0"},
             "DEVICES":
             [
-                {"dev": "TLV_EEPROM"}
+                {"dev": "EEPROM1"}
             ]
         }
     },
 
-    "TLV_EEPROM":
+    "EEPROM1":
     {
-        "dev_info": {"device_type": "EEPROM", "device_name": "TLV_EEPROM", "device_parent": "SMBUS0"},
+        "dev_info": {"device_type": "EEPROM", "device_name": "EEPROM1", "device_parent": "SMBUS0"},
         "i2c":
         {
             "topo_info": {"parent_bus": "0x0", "dev_addr": "0x56", "dev_type": "24lc64t"},
@@ -202,7 +202,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x0"},
-            "dev_attr": { "vendor_id":"0x10EE", "device_id": "0x7021", "virt_bus": "0x64", "data_base_offset":"0x0", "data_size":"0x25000", "i2c_ch_base_offset":"0x10000", "i2c_ch_size":"0x1000",  "virt_i2c_ch":"0xa"},
+            "dev_attr": { "vendor_id":"0x10EE", "device_id": "0x7021", "virt_bus": "0x64", "data_base_offset":"0x0", "data_size":"0x25000", "i2c_ch_base_offset":"0x10000", "i2c_ch_size":"0x1000",  "virt_i2c_ch":"0xc"},
             "channel":
             [
                 { "chn":"3", "dev":"CPLD_S1" },
