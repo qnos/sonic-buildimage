@@ -6,7 +6,7 @@
     "num_fans_pertray":2,
     "num_ports":33,
     "num_temps":6,
-    "num_components":5,
+    "num_components":8,
     "pddf_dev_types":
     {
             "description":" - Below is the list of supported PDDF device types (chip names) for various components. If any component uses some other driver, we will create the client using 'echo <dev-address> <dev-type> > <path>/new_device' method",
@@ -108,10 +108,34 @@
     },
     "COMPONENT5":
     {
+        "comp_attr":{ "name": "COMeBoard_CPLD", "type": "cpld", "description": "COMe Board CPLD"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/come_cpld_version | sed 's/0x//'" }
+        ]
+    },
+    "COMPONENT6":
+    {
+        "comp_attr":{ "name": "FPGA", "type": "fpga", "description": "Baseboard FPGA"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/fpga_sysfs/version | sed 's/0x//'" }
+        ]
+    },
+    "COMPONENT7":
+    {
         "comp_attr":{ "name": "PCIe", "type": "pcie", "description":"ASIC PCIe Firmware"},
         "attr_list":
         [
             { "attr_name":"version", "get_cmd": "bcmcmd 'pciephy fw version' | grep 'PCIe FW version' | cut -d ' ' -f 4" }
+        ]
+    },
+    "COMPONENT8":
+    {
+        "comp_attr":{ "name": "SSD", "type": "ssd", "description":"SSD firmware version"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "ssdutil -v | grep 'Firmware' | awk '{ print $3 }'" }
         ]
     },
 
@@ -394,7 +418,7 @@
             "topo_info":{ "parent_bus":"0x6a", "dev_addr":"0x5a", "dev_type":"psu_pmbus"},
             "attr_list":
             [
-                { "attr_name":"psu_mfr_id", "attr_devaddr":"0x5a", "attr_devtype":"pmbus", "attr_offset":"0X99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"10" },
+                { "attr_name":"psu_mfr_id", "attr_devaddr":"0x5a", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"10" },
                 { "attr_name":"psu_serial_num", "attr_devaddr":"0x5a", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"20" },
                 { "attr_name":"psu_fan_dir", "attr_devaddr":"0x5a", "attr_devtype":"pmbus", "attr_offset":"0xc3", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"5"},
                 { "attr_name":"psu_v_out", "attr_devaddr":"0x5a", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
@@ -440,7 +464,7 @@
             "topo_info":{ "parent_bus":"0x6a", "dev_addr":"0x5b", "dev_type":"psu_pmbus"},
             "attr_list":
             [
-                { "attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0X99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"10" },
+                { "attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"10" },
                 { "attr_name":"psu_serial_num", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"20" },
                 { "attr_name":"psu_fan_dir", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xc3", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"5"},
                 { "attr_name":"psu_v_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
