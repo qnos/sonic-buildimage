@@ -37,6 +37,7 @@
 #define SCRATCH_ADDR 0xA101
 #define SYS_LED_ADDR 0xA162
 #define CARD_PRES_ADDR 0xA108
+#define COME_CPLD_VER_ADDR 0xA1E0
 
 #define CPLD_REGISTER_SIZE 0x77
 
@@ -298,6 +299,18 @@ static ssize_t bmc_presence_show(struct device *dev, struct device_attribute *de
 }
 static DEVICE_ATTR_RO(bmc_presence);
 
+/* COME CPLD version attributes */
+static ssize_t come_cpld_version_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    int len = -EIO;
+    // COME CPLD register is one byte
+    mutex_lock(&cpld_data->cpld_lock);
+    len = sprintf(buf, "0x%2.2x\n",inb(COME_CPLD_VER_ADDR));
+    mutex_unlock(&cpld_data->cpld_lock);
+    return len;
+}
+static DEVICE_ATTR_RO(come_cpld_version);
+
 static struct attribute *baseboard_cpld_attrs[] = {
     &dev_attr_version.attr,
     &dev_attr_scratch.attr,
@@ -306,6 +319,7 @@ static struct attribute *baseboard_cpld_attrs[] = {
     &dev_attr_sys_led.attr,
     &dev_attr_sys_led_color.attr,
     &dev_attr_bmc_presence.attr,
+    &dev_attr_come_cpld_version.attr,
     NULL,
 };
 

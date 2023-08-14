@@ -6,7 +6,7 @@
     "num_fans_pertray":2,
     "num_ports":33,
     "num_temps":7,
-    "num_components":6,
+    "num_components":9,
     "pddf_dev_types":
     {
             "description":" - Below is the list of supported PDDF device types (chip names) for various components. If any component uses some other driver, we will create the client using 'echo <dev-address> <dev-type> > <path>/new_device' method",
@@ -114,10 +114,34 @@
     },
     "COMPONENT6":
     {
+        "comp_attr":{ "name": "COMeBoard_CPLD", "type": "cpld", "description": "COMe Board CPLD"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/come_cpld_version | sed 's/0x//'" }
+        ]
+    },
+    "COMPONENT7":
+    {
+        "comp_attr":{ "name": "FPGA", "type": "fpga", "description": "Baseboard FPGA"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/fpga_sysfs/version | sed 's/0x//'" }
+        ]
+    },
+    "COMPONENT8":
+    {
         "comp_attr":{ "name": "PCIe", "type": "pcie", "description":"ASIC PCIe Firmware"},
         "attr_list":
         [
             { "attr_name":"version", "get_cmd": "bcmcmd 'pciephy fw version' | grep 'PCIe FW version' | cut -d ' ' -f 4" }
+        ]
+    },
+    "COMPONENT9":
+    {
+        "comp_attr":{ "name": "SSD", "type": "ssd", "description":"SSD firmware version"},
+        "attr_list":
+        [
+            { "attr_name":"version", "get_cmd": "ssdutil -v | grep 'Firmware' | awk '{ print $3 }'" }
         ]
     },
 
