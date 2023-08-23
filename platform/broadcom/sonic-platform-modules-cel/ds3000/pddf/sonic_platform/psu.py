@@ -59,5 +59,9 @@ class Psu(PddfPsu):
                 return rev
         else:
             # TODO:: add non-BMC implementation
-            pass
+            cmd = "i2cget -y -f {} {} 0x9b w".format(42 + self.psu_index - 1, hex(0x5a + self.psu_index - 1))
+            status, output = self._api_helper.get_cmd_output(cmd)
+            if status == 0:
+                rev = output.rstrip()
+                return rev
         return 'N/A'

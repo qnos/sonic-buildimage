@@ -48,6 +48,9 @@ class Fan(PddfFan):
         if not self.get_status():
            return 'N/A'
 
+        if self.is_psu_fan:
+            return 'N/A'
+
         return super().get_direction()
 
 
@@ -98,7 +101,7 @@ class Fan(PddfFan):
         else:
             # Get fan rpm instead of fan pwm
             idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
-            attr = "fan" + str(idx) + "_pwm"
+            attr = "fan" + str(idx) + "_input"
             output = self.pddf_obj.get_attr_name_output("FAN-CTRL", attr)
 
             if not output:
