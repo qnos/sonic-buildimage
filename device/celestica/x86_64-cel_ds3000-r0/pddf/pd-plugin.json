@@ -6,6 +6,10 @@
             "bmc":
             {
                 "valmap": { "1":true, "0":false }
+            },
+            "i2c":
+            {
+                "valmap": { "1":true, "0":false }
             }
         },
 
@@ -14,6 +18,10 @@
             "bmc":
             {
                 "valmap": { "0": true, "8":false }
+            },
+            "i2c":
+            {
+                "valmap": { "1": true, "0": false }
             }
         },
 
@@ -22,6 +30,10 @@
             "bmc":
             {
                 "valmap": { "B2F":"INTAKE", "F2B":"EXHAUST" }
+            },
+            "i2c":
+            {
+                "valmap": { "1": "INTAKE", "0":"EXHAUST" }
             }
         },
 
@@ -40,6 +52,10 @@
             "bmc":
             {
                 "valmap": { "B2F":"INTAKE", "F2B":"EXHAUST" }
+            },
+            "i2c":
+            {
+                "valmap": { "1":"INTAKE", "0":"EXHAUST" }
             }
         },
 
@@ -52,6 +68,10 @@
             "bmc":
             {
                "valmap": {"ok":true, "na":false}
+            },
+            "i2c":
+            {
+                "valmap": {"0":true, "1":false}
             }
         },
 
