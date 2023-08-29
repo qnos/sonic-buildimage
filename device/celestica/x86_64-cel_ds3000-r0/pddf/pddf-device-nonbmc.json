@@ -239,10 +239,6 @@
                 { "chn":"6", "dev":"FAN-CTRL" },
                 { "chn":"6", "dev":"CPLD_BASEBOARD" },
                 { "chn":"7", "dev":"MUX6" },
-                { "chn":"8", "dev":"UCD90120-1" },
-                { "chn":"8", "dev":"UCD90120-2" },
-                { "chn":"9", "dev":"MP2975-1" },
-                { "chn":"9", "dev":"MP2975-2" },
                 { "chn":"10", "dev":"TEMP1" },
                 { "chn":"10", "dev":"TEMP2" },
                 { "chn":"10", "dev":"TEMP3" },
@@ -342,44 +338,6 @@
                 { "attr_name": "temp1_max_hyst"},
                 { "attr_name": "temp1_input"}
             ]
-        }
-    },
-
-    "MP2975-1":
-    {
-        "dev_info": { "device_type":"CPLD", "device_name":"MP2975-1", "device_parent":"FPGAPCIE0"},
-        "i2c":
-        {
-            "topo_info": { "parent_bus":"0x6c", "dev_addr":"0x7a", "dev_type":"i2c_cpld"},
-            "dev_attr":{}
-        }
-    },
-    "MP2975-2":
-    {
-        "dev_info": { "device_type":"CPLD", "device_name":"MP2975-2", "device_parent":"FPGAPCIE0"},
-        "i2c":
-        {
-            "topo_info": { "parent_bus":"0x6c", "dev_addr":"0x70", "dev_type":"i2c_cpld"},
-            "dev_attr":{}
-        }
-    },
-
-    "UCD90120-1":
-    {
-        "dev_info": { "device_type":"CPLD", "device_name":"UCD90120-1", "device_parent":"FPGAPCIE0"},
-        "i2c":
-        {
-            "topo_info": { "parent_bus":"0x6b", "dev_addr":"0x35", "dev_type":"i2c_cpld"},
-            "dev_attr":{}
-        }
-    },
-    "UCD90120-2":
-    {
-        "dev_info": { "device_type":"CPLD", "device_name":"UCD90120-2", "device_parent":"FPGAPCIE0"},
-        "i2c":
-        {
-            "topo_info": { "parent_bus":"0x6b", "dev_addr":"0x34", "dev_type":"i2c_cpld"},
-            "dev_attr":{}
         }
     },
 
@@ -2071,7 +2029,7 @@
         "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY1_EEPROM", "device_parent": "MUX7"},
         "i2c":
         {
-            "topo_info": {"parent_bus": "0x32", "dev_addr": "0x50", "dev_type": "24lc64t"},
+            "topo_info": {"parent_bus": "0x32", "dev_addr": "0x50", "dev_type": "24c64"},
             "dev_attr": {"access_mode": "BLOCK"},
             "attr_list": [
                 {"attr_name": "eeprom"}
@@ -2083,7 +2041,7 @@
         "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY2_EEPROM", "device_parent": "MUX7"},
         "i2c":
         {
-            "topo_info": {"parent_bus": "0x33", "dev_addr": "0x50", "dev_type": "24lc64t"},
+            "topo_info": {"parent_bus": "0x33", "dev_addr": "0x50", "dev_type": "24c64"},
             "dev_attr": {"access_mode": "BLOCK"},
             "attr_list": [
                 {"attr_name": "eeprom"}
@@ -2095,7 +2053,7 @@
         "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY3_EEPROM", "device_parent": "MUX7"},
         "i2c":
         {
-            "topo_info": {"parent_bus": "0x34", "dev_addr": "0x50", "dev_type": "24lc64t"},
+            "topo_info": {"parent_bus": "0x35", "dev_addr": "0x50", "dev_type": "24c64"},
             "dev_attr": {"access_mode": "BLOCK"},
             "attr_list": [
                 {"attr_name": "eeprom"}
@@ -2107,7 +2065,7 @@
         "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY4_EEPROM", "device_parent": "MUX7"},
         "i2c":
         {
-            "topo_info": {"parent_bus": "0x35", "dev_addr": "0x50", "dev_type": "24lc64t"},
+            "topo_info": {"parent_bus": "0x36", "dev_addr": "0x50", "dev_type": "24c64"},
             "dev_attr": {"access_mode": "BLOCK"},
             "attr_list": [
                 {"attr_name": "eeprom"}
