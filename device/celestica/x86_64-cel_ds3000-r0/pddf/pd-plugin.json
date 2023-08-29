@@ -33,7 +33,7 @@
             },
             "i2c":
             {
-                "valmap": { "1": "INTAKE", "0":"EXHAUST" }
+                "valmap": { "0": "INTAKE", "1":"EXHAUST" }
             }
         },
 
@@ -55,7 +55,7 @@
             },
             "i2c":
             {
-                "valmap": { "1":"INTAKE", "0":"EXHAUST" }
+                "valmap": { "0":"INTAKE", "1":"EXHAUST" }
             }
         },
 

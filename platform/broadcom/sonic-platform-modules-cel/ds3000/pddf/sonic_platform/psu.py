@@ -51,6 +51,9 @@ class Psu(PddfPsu):
         Returns:
             string: revision of device
         """
+        if not self.get_presence():
+            return 'N/A'
+
         if self._api_helper.is_bmc_present():
             cmd = "ipmitool fru list {} | grep 'Product Version'".format(5 - self.psu_index)
             status, output = self._api_helper.get_cmd_output(cmd)
@@ -58,10 +61,11 @@ class Psu(PddfPsu):
                 rev = output.split()[-1]
                 return rev
         else:
-            # TODO:: add non-BMC implementation
-            cmd = "i2cget -y -f {} {} 0x9b w".format(42 + self.psu_index - 1, hex(0x5a + self.psu_index - 1))
+            # Get the revision information from FRU
+            cmd = "i2cget -y -f {} {} 0x2d w".format(42 + self.psu_index - 1, hex(0x52 + self.psu_index - 1))
             status, output = self._api_helper.get_cmd_output(cmd)
             if status == 0:
-                rev = output.rstrip()
-                return rev
+                rev = bytes.fromhex(output.strip('0x')).decode('utf-8')
+                # swap to change the endian difference
+                return rev[::-1]
         return 'N/A'

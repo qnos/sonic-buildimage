@@ -64,8 +64,8 @@ class Fan(PddfFan):
         """
         target_speed = 0
         if self.is_psu_fan:
-            # Target speed not usually supported for PSU fans
-            return 'N/A'
+            # PSU fan not controllable, return current speed
+            return self.get_speed()
         else:
             speed_rpm = self.get_speed_rpm()
             max_fan_rpm = eval(self.plugin_data['FAN']['FAN_MAX_RPM_SPEED'])
