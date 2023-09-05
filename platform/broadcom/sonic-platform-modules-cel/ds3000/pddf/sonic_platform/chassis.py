@@ -242,3 +242,30 @@ class Chassis(PddfChassis):
             A string containing the hardware revision for this chassis.
         """
         return self._eeprom.revision_str()
+
+    def get_system_airflow(self):
+        """
+        Retrieve system airflow
+        Returns:
+            string: INTAKE or EXHAUST
+        """
+        fans = self.get_all_fans()
+        for fan in fans:
+            if fan.get_presence():
+                dir = fan.get_direction()
+                if dir in ['INTAKE', 'EXHAUST']:
+                    return dir
+        return None
+
+    def get_thermal_manager(self):
+        """
+        Retrieves thermal manager class on this chasssis
+
+        Returns:
+            A class derived from ThermalManagerBase representing the
+            specified thermal manager
+        """
+        if not self._api_helper.is_bmc_present():
+            from .thermal_manager import ThermalManager
+            return ThermalManager
+        return None
