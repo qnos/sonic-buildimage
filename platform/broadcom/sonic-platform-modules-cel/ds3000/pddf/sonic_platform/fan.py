@@ -14,13 +14,9 @@ class Fan(PddfFan):
     LPC_CPLD_SETREG_PATH = "/sys/bus/platform/devices/baseboard/setreg"
     FAN_PWM_CTRL_REG_MAP = {
         1: '0xa1b2',
-        2: '0xa1b2',
-        3: '0xa1b8',
-        4: '0xa1b8',
-        5: '0xa1be',
-        6: '0xa1be',
-        7: '0xa1c4',
-        8: '0xa1c4'
+        2: '0xa1b8',
+        3: '0xa1c4',
+        4: '0xa1ca'
     }
 
     def __init__(self, tray_idx, fan_idx=0, pddf_data=None, pddf_plugin_data=None, is_psu_fan=False, psu_index=0):
@@ -116,7 +112,7 @@ class Fan(PddfFan):
             max_speed = int(self.plugin_data['FAN']['FAN_MAX_RPM_SPEED'])
             speed_percentage = round((speed*100)/max_speed)
 
-            return speed_percentage
+            return speed_percentage if speed_percentage <= 100 else 100
 
     def set_speed(self, speed):
         """
@@ -153,8 +149,11 @@ class Fan(PddfFan):
                 # Enable BMC FSC mode
                 return False
 
+        # FAN 1 & 2 in same fantray share the same register, skip Fan2 setting
+        if self.fan_index == 2:
+            return True
         # Set FAN PWM through baseboard CPLD
-        reg = self.FAN_PWM_CTRL_REG_MAP.get(self.fan_index)
+        reg = self.FAN_PWM_CTRL_REG_MAP.get(self.fantray_index)
         status = self._api_helper.lpc_setreg(self.LPC_CPLD_SETREG_PATH, reg, hex(pwm))
 
         return status
