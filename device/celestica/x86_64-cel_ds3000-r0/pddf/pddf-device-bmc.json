@@ -77,7 +77,8 @@
         "comp_attr":{ "name": "BIOS", "type": "bios", "description": "Basic Input/Output System"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "echo `dmidecode -s bios-version`-`dmidecode -s bios-release-date`" }
+            { "attr_name":"version", "get_cmd": "echo `dmidecode -s bios-version`-`dmidecode -s bios-release-date`" },
+            { "attr_name":"update", "cmd": "afulnx_64 {} /p /b /n /me /x /k" }
         ]
     },
     "COMPONENT2":
@@ -93,7 +94,8 @@
         "comp_attr":{ "name": "BaseBoard_CPLD", "type": "cpld", "description": "Base Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/version | sed 's/0x//'" }
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/version | sed 's/0x//'" },
+            { "attr_name":"update", "cmd": "ispvm {}" }
         ]
     },
     "COMPONENT4":
@@ -125,7 +127,8 @@
         "comp_attr":{ "name": "FPGA", "type": "fpga", "description": "Baseboard FPGA"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/fpga_sysfs/version | sed 's/0x//'" }
+            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/fpga_sysfs/version | sed 's/0x//'" },
+            { "attr_name":"update", "cmd": "fpga_prog /sys/bus/pci/devices/0000:06:00.0/resource0 {}" }
         ]
     },
     "COMPONENT8":
