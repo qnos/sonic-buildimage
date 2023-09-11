@@ -1054,5 +1054,9 @@ class PddfApi():
         output_component['type']=self.data[device_name]['comp_attr']['type']
         output_component['description']=self.data[device_name]['comp_attr']['description']
         output_component[attr_name]=self.component_get_cmd(component_attr)
+        update_attrs = ['pre-update', 'update', 'post-update']
+        for attr in update_attrs:
+            update_attr = self.check_component_based_attr(device_name, attr)
+            output_component[attr] = update_attr['cmd'] if 'cmd' in update_attr else None
 
         return output_component
