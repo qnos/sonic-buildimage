@@ -1,7 +1,3 @@
-#ds3000/cfg/ds3000-modules.conf etc/modules-load.d
-#ds3000/systemd/platform-modules-ds3000.service lib/systemd/system
-#ds3000/modules/sonic_platform-1.0-py3-none-any.whl usr/share/sonic/device/x86_64-cel_ds3000-r0
-#services/platform_api/platform_api_mgnt.sh usr/local/bin
 #ds3000/systemd/pddf-platform-init.service lib/systemd/system
 ds3000/pddf/sonic_platform-1.0-py3-none-any.whl usr/share/sonic/device/x86_64-cel_ds3000-r0/pddf
 ds3000/scripts/pre_pddf_init.sh usr/local/bin
