@@ -94,7 +94,7 @@
         "comp_attr":{ "name": "BaseBoard_CPLD", "type": "cpld", "description": "Base Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/version | sed 's/0x//'" },
+            { "attr_name":"version", "get_cmd": "r=$(cat /sys/devices/platform/baseboard/version) && printf '%d.%d' $(($r>>4)) $(($r&0xf))" },
             { "attr_name":"update", "cmd": "ispvm {}" }
         ]
     },
@@ -103,7 +103,7 @@
         "comp_attr":{ "name": "SwitchBoard_CPLD1", "type": "cpld", "description":"Switch Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x30 0 | tr a-z A-Z | cut -d 'X' -f 2" }
+            { "attr_name":"version", "get_cmd": "r=$(i2cget -y -f 102 0x30 0) && printf '%d.%d' $(($r>>4)) $(($r&0xf))" }
         ]
     },
     "COMPONENT5":
@@ -111,7 +111,7 @@
         "comp_attr":{ "name": "SwitchBoard_CPLD2", "type": "cpld", "description":"Switch Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "i2cget -y -f 102 0x31 0 | tr a-z A-Z | cut -d 'X' -f 2" }
+            { "attr_name":"version", "get_cmd": "r=$(i2cget -y -f 102 0x31 0) && printf '%d.%d' $(($r>>4)) $(($r&0xf))" }
         ]
     },
     "COMPONENT6":
@@ -119,7 +119,7 @@
         "comp_attr":{ "name": "COMeBoard_CPLD", "type": "cpld", "description": "COMe Board CPLD"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/baseboard/come_cpld_version | sed 's/0x//'" }
+            { "attr_name":"version", "get_cmd": "r=$(cat /sys/devices/platform/baseboard/come_cpld_version) && printf '%d.%d' $(($r>>4)) $(($r&0xf))" }
         ]
     },
     "COMPONENT7":
@@ -127,7 +127,7 @@
         "comp_attr":{ "name": "FPGA", "type": "fpga", "description": "Baseboard FPGA"},
         "attr_list":
         [
-            { "attr_name":"version", "get_cmd": "cat /sys/bus/platform/devices/fpga_sysfs/version | sed 's/0x//'" },
+            { "attr_name":"version", "get_cmd": "r=$(cat /sys/devices/platform/fpga_sysfs/version) && printf '%d.%d' $(($r>>16)) $(($r&0xffff))" },
             { "attr_name":"update", "cmd": "fpga_prog /sys/bus/pci/devices/0000:06:00.0/resource0 {}" }
         ]
     },
