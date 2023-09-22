@@ -196,7 +196,7 @@ phy_chain_rx_lane_map_physical{125.0}=0x3210
 
 #MC lane swap
 phy_chain_tx_lane_map_physical{129.0}=0x3210
-phy_chain_rx_lane_map_physical{129.0}=0x0231
+phy_chain_rx_lane_map_physical{129.0}=0x3210
 
 
 #wc0 P/N flip
@@ -520,14 +520,14 @@ phy_chain_tx_polarity_flip_physical{128.0}=0x0
 phy_chain_rx_polarity_flip_physical{128.0}=0x0
 
 #MC P/N flip
-phy_chain_tx_polarity_flip_physical{129.0}=0x1
+phy_chain_tx_polarity_flip_physical{129.0}=0x0
 phy_chain_rx_polarity_flip_physical{129.0}=0x0
 phy_chain_tx_polarity_flip_physical{130.0}=0x0
 phy_chain_rx_polarity_flip_physical{130.0}=0x0
-phy_chain_tx_polarity_flip_physical{131.0}=0x1
-phy_chain_rx_polarity_flip_physical{131.0}=0x1
+phy_chain_tx_polarity_flip_physical{131.0}=0x0
+phy_chain_rx_polarity_flip_physical{131.0}=0x0
 phy_chain_tx_polarity_flip_physical{132.0}=0x0
-phy_chain_rx_polarity_flip_physical{132.0}=0x1
+phy_chain_rx_polarity_flip_physical{132.0}=0x0
 
 
 # configuration for 100G optical module
