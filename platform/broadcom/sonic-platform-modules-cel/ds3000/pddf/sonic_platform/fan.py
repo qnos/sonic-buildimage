@@ -42,10 +42,17 @@ class Fan(PddfFan):
                Or N/A if fan removed or abnormal
         """
         if not self.get_status():
-           return 'N/A'
+           return "N/A"
 
         if self.is_psu_fan:
-            return 'N/A'
+            from sonic_platform.psu import Psu
+            psu = Psu(self.fans_psu_index - 1, self.pddf_obj, self.plugin_data)
+            model = psu.get_model()
+            if model in ["FSP550-20FM", "G1251-0550WNA"]:
+                return "EXHAUST"
+            elif model in ["FSP550-29FM", "G1251-0550WRA"]:
+                return "INTAKE"
+            return "Unknown"
 
         return super().get_direction()
 

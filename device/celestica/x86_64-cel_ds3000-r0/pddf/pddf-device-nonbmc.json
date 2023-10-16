@@ -517,7 +517,9 @@
             "channel":
             [
                 { "chn":"0", "dev":"PSU1" },
-                { "chn":"1", "dev":"PSU2" }
+                { "chn":"0", "dev":"PSU1-EEPROM" },
+                { "chn":"1", "dev":"PSU2" },
+                { "chn":"1", "dev":"PSU2-EEPROM" }
             ]
         }
     },
@@ -1984,6 +1986,18 @@
             ]
         }
     },
+    "PSU1-EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU1-EEPROM", "device_parent": "MUX6"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x2a", "dev_addr": "0x52", "dev_type": "24lc64t"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
+        }
+    },
 
     "PSU2":
     {
@@ -2023,6 +2037,18 @@
                 {"attr_name":"psu_v_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
                 {"attr_name":"psu_v_out_min", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
                 {"attr_name":"psu_p_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
+            ]
+        }
+    },
+    "PSU2-EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU2-EEPROM", "device_parent": "MUX6"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x2b", "dev_addr": "0x53", "dev_type": "24lc64t"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
             ]
         }
     },

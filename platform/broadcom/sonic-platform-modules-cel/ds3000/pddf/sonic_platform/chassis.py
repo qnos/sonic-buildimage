@@ -249,13 +249,12 @@ class Chassis(PddfChassis):
         Returns:
             string: INTAKE or EXHAUST
         """
-        fans = self.get_all_fans()
-        for fan in fans:
-            if fan.get_presence():
-                dir = fan.get_direction()
-                if dir in ['INTAKE', 'EXHAUST']:
-                    return dir
-        return None
+        airflow = self.get_serial()[5:8]
+        if airflow == "B2F":
+            return "INTAKE"
+        elif airflow == "F2B":
+            return "EXHAUST"
+        return "Unknown"
 
     def get_thermal_manager(self):
         """
