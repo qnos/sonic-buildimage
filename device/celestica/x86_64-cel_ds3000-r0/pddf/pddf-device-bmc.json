@@ -1785,7 +1785,7 @@
                     { "attr_name":"psu_i_in", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU1_CIn", "field_pos":"3", "mult":"1000"},
                     { "attr_name":"psu_fan1_speed_rpm", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU1_Fan", "field_pos":"3", "mult":"1"},
                     { "attr_name":"psu_temp1_input", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU1_Temp1", "field_pos":"3", "mult":"1000"},
-                    { "attr_name":"psu_temp2_input", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU1_Temp2", "field_pos":"3", "mult":"1000"}
+                    { "attr_name":"psu_temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"PSU1_Temp1", "field_pos":"18", "mult":"1000"}
                 ]
             }
         }
@@ -1812,7 +1812,7 @@
                     { "attr_name":"psu_i_in", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU2_CIn", "field_pos":"3", "mult":"1000"},
                     { "attr_name":"psu_fan1_speed_rpm", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU2_Fan", "field_pos":"3", "mult":"1"},
                     { "attr_name":"psu_temp1_input", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU2_Temp1", "field_pos":"3", "mult":"1000"},
-                    { "attr_name":"psu_temp2_input", "bmc_cmd":"ipmitool sdr", "raw":"0", "field_name" : "PSU2_Temp2", "field_pos":"3", "mult":"1000"}
+                    { "attr_name":"psu_temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"PSU2_Temp1", "field_pos":"18", "mult":"1000"}
                 ]
             }
         }
@@ -1870,16 +1870,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"CPU_Temp", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"CPU_Temp", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"CPU_Temp", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"CPU_Temp", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "CPU_Temp", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "CPU_Temp", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "CPU_Temp", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
     "TEMP2":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1888,16 +1887,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U5", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U5", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U5", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U5", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U5", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U5", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U5", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
     "TEMP3":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1906,17 +1904,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U56", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U56", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U56", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Base_Temp_U56", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U56", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U56", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Base_Temp_U56", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
-
     "TEMP4":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1925,16 +1921,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U17", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U17", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U17", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U17", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U17", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U17", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U17", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
     "TEMP5":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1943,16 +1938,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U18", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U18", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U18", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U18", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U18", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U18", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U18", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
     "TEMP6":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1961,17 +1955,15 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U28", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U28", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U28", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U28", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U28", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U28", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U28", "field_pos":"14"}
 
                 ]
             }
         }
     },
-
-
     "TEMP7":
     {
         "dev_info": { "device_type":"TEMP_SENSOR"},
@@ -1980,15 +1972,16 @@
             "ipmitool" : {
                 "attr_list":
                 [
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U29", "field_pos":"18"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U29", "field_pos":"16"},
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U29", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U29", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U29", "field_pos":"3"},
-                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U29", "field_pos":"12"}
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U29", "field_pos":"14"}
 
                 ]
             }
         }
     },
+
     "SYS_LED":
     {
         "dev_info": { "device_type":"LED", "device_name":"SYS_LED"},
