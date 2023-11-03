@@ -16,6 +16,9 @@
 
 #define FPGA_VERSION_ADDR            0x0000
 #define FPGA_SCRATCH_ADDR            0x0004
+#define FPGA_BCM_TEMP_ADDR           0x001c
+#define FPGA_BCM_TEMP_LOW_ADDR       0x0078
+#define FPGA_BCM_TEMP_HIGH_ADDR      0x0080
 #define FPGA_REG_SPACE_SIZE          0x2000
 
 
@@ -206,12 +209,42 @@ static ssize_t dump_read(struct file *filp, struct kobject *kobj,
     return status;
 }
 
+/**
+ * Show value of fpga bcm switch internal temp sensor register calculated by FPGA
+ * @param  buf     register value in hexstring
+ * @return         number of bytes read, or an error code
+ */
+static ssize_t get_fpga_bcm_temp_fpga(struct device *dev, struct device_attribute *devattr,
+                                char *buf)
+{
+    struct fpga_priv *fpga = dev_get_drvdata(dev);
+    uint32_t reg_val = ioread32(fpga->base + FPGA_BCM_TEMP_ADDR) & 0x3ffff;
+
+    return sprintf(buf, "0x%08x\n", reg_val);
+}
+
+/**
+ * Show value of fpga bcm switch internal temp sensor register
+ * @param  buf     register value in hexstring
+ * @return         number of bytes read, or an error code
+ */
+static ssize_t get_fpga_bcm_temp(struct device *dev, struct device_attribute *devattr,
+                                char *buf)
+{
+    struct fpga_priv *fpga = dev_get_drvdata(dev);
+    u8 low_byte = ioread32(fpga->base + FPGA_BCM_TEMP_LOW_ADDR) & 0xff;
+    u8 high_byte = ioread32(fpga->base + FPGA_BCM_TEMP_HIGH_ADDR) & 0xff;
+
+    return sprintf(buf, "0x%02x%02x\n", high_byte, low_byte);
+}
 
 /* FPGA attributes */
 static DEVICE_ATTR( getreg, 0600, get_fpga_reg_value, set_fpga_reg_address);
 static DEVICE_ATTR( setreg, 0200, NULL , set_fpga_reg_value);
 static DEVICE_ATTR( scratch, 0600, get_fpga_scratch, set_fpga_scratch);
 static DEVICE_ATTR( version, 0400, get_fpga_version, NULL);
+static DEVICE_ATTR( bcm_temp_fpga, 0400, get_fpga_bcm_temp_fpga, NULL);
+static DEVICE_ATTR( bcm_temp, 0400, get_fpga_bcm_temp, NULL);
 static BIN_ATTR_RO( dump, FPGA_REG_SPACE_SIZE);
 
 static struct bin_attribute *fpga_bin_attrs[] = {
@@ -223,6 +256,8 @@ static struct attribute *fpga_attrs[] = {
     &dev_attr_getreg.attr,
     &dev_attr_scratch.attr,
     &dev_attr_version.attr,
+    &dev_attr_bcm_temp_fpga.attr,
+    &dev_attr_bcm_temp.attr,
     &dev_attr_setreg.attr,
     NULL,
 };
