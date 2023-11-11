@@ -71,7 +71,10 @@ class Fan(PddfFan):
             return self.get_speed()
         else:
             speed_rpm = self.get_speed_rpm()
-            max_fan_rpm = eval(self.plugin_data['FAN']['FAN_MAX_RPM_SPEED'])
+            if self.fan_index == 1:
+                max_fan_rpm = eval(self.plugin_data['FAN']['FRONT_FAN_MAX_RPM_SPEED'])
+            else:
+                max_fan_rpm = eval(self.plugin_data['FAN']['REAR_FAN_MAX_RPM_SPEED'])
             speed_percentage = round(int((speed_rpm * 100) / max_fan_rpm))
             target_speed = speed_percentage
 
@@ -116,7 +119,10 @@ class Fan(PddfFan):
             else:
                 speed = int(float(output['status']))
 
-            max_speed = int(self.plugin_data['FAN']['FAN_MAX_RPM_SPEED'])
+            if self.fan_index == 1:
+                max_speed = int(self.plugin_data['FAN']['FRONT_FAN_MAX_RPM_SPEED'])
+            else:
+                max_speed = int(self.plugin_data['FAN']['REAR_FAN_MAX_RPM_SPEED'])
             speed_percentage = round((speed*100)/max_speed)
 
             return speed_percentage if speed_percentage <= 100 else 100
