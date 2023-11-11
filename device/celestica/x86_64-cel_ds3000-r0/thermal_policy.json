@@ -60,6 +60,34 @@
             ]
         },
         {
+            "name": "any thermal over high threshold",
+            "conditions": [
+                {
+                    "type": "thermal.any.over.high_threshold"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "fan.all.set_speed",
+                    "speed": "100"
+                }
+            ]
+        },
+        {
+            "name": "any thermal below high threshold",
+            "conditions": [
+                {
+                    "type": "thermal.any.below.low_threshold"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "fan.all.set_speed",
+                    "speed": "10"
+                }
+            ]
+        },
+        {
             "name": "thermal recover",
             "conditions": [
                 {
@@ -67,13 +95,21 @@
                 },
                 {
                     "type": "psu.all.presence"
+                },
+                {
+                    "type": "thermal.all.below.high_threshold"
+                },
+                {
+                    "type": "thermal.all.over.low_threshold"
                 }
             ],
             "actions": [
                 {
                     "type": "thermal.temp_check_and_set_all_fan_speed",
-                    "default_speed": "50",
-                    "hightemp_speed": "100"
+                    "cpu_pid_params": [82, 3, 0.5, 0.2],
+                    "bcm_pid_params": [88, 4, 0.3, 0.4],
+                    "f2b_linear_params": [34, 54, 3, 35, 100],
+                    "b2f_linear_params": [28, 48, 3, 35, 100]
                 }
             ]
         }

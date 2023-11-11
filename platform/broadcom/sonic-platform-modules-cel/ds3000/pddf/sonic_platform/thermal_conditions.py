@@ -69,6 +69,42 @@ class ThermalOverHighCriticalCondition(ThermalCondition):
     def is_match(self, thermal_info_dict):
         thermal_info_obj = self.get_thermal_info(thermal_info_dict)
         if thermal_info_obj:
-            return thermal_info_obj.is_over_high_critical_threshold()
+            return thermal_info_obj.is_any_over_high_critical_threshold()
         else:
             return False
+
+@thermal_json_object('thermal.any.over.high_threshold')
+class AnyThermalOverHighThresholdCondition(ThermalCondition):
+    def is_match(self, thermal_info_dict):
+        thermal_info_obj = self.get_thermal_info(thermal_info_dict)
+        if thermal_info_obj:
+            return thermal_info_obj.is_any_warm_up_and_over_high_threshold()
+        else:
+            return False
+
+@thermal_json_object('thermal.any.below.low_threshold')
+class AnyThermalBelowLowThresholdCondition(ThermalCondition):
+    def is_match(self, thermal_info_dict):
+        thermal_info_obj = self.get_thermal_info(thermal_info_dict)
+        if thermal_info_obj:
+            return thermal_info_obj.is_any_cool_down_and_below_low_threshold()
+        else:
+            return False
+
+@thermal_json_object('thermal.all.below.high_threshold')
+class AnyThermalOverHighThresholdCondition(ThermalCondition):
+    def is_match(self, thermal_info_dict):
+        thermal_info_obj = self.get_thermal_info(thermal_info_dict)
+        if thermal_info_obj:
+            return not thermal_info_obj.is_any_warm_up_and_over_high_threshold()
+        else:
+            return True
+
+@thermal_json_object('thermal.all.over.low_threshold')
+class AnyThermalBelowLowThresholdCondition(ThermalCondition):
+    def is_match(self, thermal_info_dict):
+        thermal_info_obj = self.get_thermal_info(thermal_info_dict)
+        if thermal_info_obj:
+            return not thermal_info_obj.is_any_cool_down_and_below_low_threshold()
+        else:
+            return True

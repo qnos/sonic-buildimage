@@ -1,5 +1,6 @@
 from sonic_platform_base.sonic_thermal_control.thermal_action_base import ThermalPolicyActionBase
 from sonic_platform_base.sonic_thermal_control.thermal_json_object import thermal_json_object
+from .helper import APIHelper
 
 from sonic_py_common import logger
 
@@ -12,8 +13,6 @@ class SetFanSpeedAction(ThermalPolicyActionBase):
     """
     # JSON field definition
     JSON_FIELD_SPEED = 'speed'
-    JSON_FIELD_DEFAULT_SPEED = 'default_speed'
-    JSON_FIELD_HIGHTEMP_SPEED = 'hightemp_speed'
 
     def __init__(self):
         """
@@ -66,44 +65,125 @@ class SetAllFanSpeedAction(SetFanSpeedAction):
         SetAllFanSpeedAction.set_all_fan_speed(thermal_info_dict, self.speed)
 
 
+class LinearFanController():
+    """
+    Common Linear FAN Controller for B2F and F2B
+    """
+    def __init__(self, low_temp, high_temp, hyst_temp, low_pwm, high_pwm):
+        self._low_temp = low_temp
+        self._high_temp = high_temp
+        self._hyst_temp = hyst_temp
+        self._low_pwm = low_pwm
+        self._high_pwm = high_pwm
+        self._linear_slope = (high_pwm - low_pwm) / (high_temp - low_temp)
+
+    def calc_fan_speed(self, temp, descent=False):
+        low_temp = self._low_temp - self._hyst_temp if descent else self._low_temp
+        high_temp = self._high_temp - self._hyst_temp if descent else self._high_temp
+        if temp <= low_temp:
+            return self._low_pwm
+        elif temp >= high_temp:
+            return self._high_pwm
+        else:
+            return self._linear_slope * (temp - low_temp)
+
+class PIDFanController():
+    """
+    Common FAN PID controller for CPU and BCM Temp
+    """
+    MAX_SPEED = 100
+    MIN_SPEED = 35
+    def __init__(self, setpoint, p_val, i_val, d_val):
+        self._setpoint = setpoint
+        self._p = p_val
+        self._i = i_val
+        self._d = d_val
+        self._curr_speed = 35
+
+    def calc_fan_speed(self, hist2_temp, hist1_temp, temp):
+        if hist2_temp == None or hist1_temp == None:
+            return self._curr_speed
+        speed = self._curr_speed + self._p * (temp - hist1_temp) \
+            + self._i * (temp - self._setpoint) + self._d * (temp - 2 * hist1_temp + hist2_temp)
+        if speed > self.MAX_SPEED:
+            speed = self.MAX_SPEED
+        elif speed < self.MIN_SPEED:
+            speed = self.MIN_SPEED
+        self._curr_speed = speed
+        return speed
+
+
 @thermal_json_object('thermal.temp_check_and_set_all_fan_speed')
 class ThermalRecoverAction(SetFanSpeedAction):
     """
     Action to check thermal sensor temperature change status and set speed for all fans
     """
+    CPU_PID_PARAMS = "cpu_pid_params"
+    BCM_PID_PARAMS = "bcm_pid_params"
+    F2B_LINEAR_PARAMS = "f2b_linear_params"
+    B2F_LINEAR_PARAMS = "b2f_linear_params"
+
+    def __init__(self):
+        SetFanSpeedAction.__init__(self)
+        self.sys_airflow = None
+        self.cpu_pid_params = None
+        self.bcm_pid_params = None
+        self.f2b_linear_params = None
+        self.b2f_linear_params = None
+        self.cpu_fan_controller = None
+        self.bcm_fan_controller = None
+        self.linear_fan_controller = None
 
     def load_from_json(self, json_obj):
         """
         Construct ThermalRecoverAction via JSON. JSON example:
             {
-                "type": "thermal.temp_check_and_set_all_fan_speed"
-                "default_speed": "50"
-                "hightemp_speed": "100"
+                "type": "thermal.temp_check_and_set_all_fan_speed",
+                "cpu_pid_params": [82, 3, 0.5, 0.2],
+                "bcm_pid_params": [88, 4, 0.3, 0.4],
+                "f2b_linear_params": [34, 54, 3, 35, 100],
+                "b2f_linear_params": [28, 48, 3, 35, 100]
             }
         :param json_obj: A JSON object representing a ThermalRecoverAction action.
         :return:
         """
-        if SetFanSpeedAction.JSON_FIELD_DEFAULT_SPEED in json_obj:
-            default_speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_DEFAULT_SPEED])
-            if default_speed < 0 or default_speed > 100:
-                raise ValueError('SetFanSpeedAction invalid default speed value {} in JSON policy file, valid value should be [0, 100]'.
-                                 format(default_speed))
-            self.default_speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_DEFAULT_SPEED])
+        if self.CPU_PID_PARAMS in json_obj:
+            cpu_pid_params = json_obj[self.CPU_PID_PARAMS]
+            if not isinstance(cpu_pid_params, list) or len(cpu_pid_params) != 4:
+                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                                 format(cpu_pid_params))
+            self.cpu_pid_params = cpu_pid_params
         else:
-            raise ValueError('SetFanSpeedAction missing mandatory field {} in JSON policy file'.
-                             format(SetFanSpeedAction.JSON_FIELD_DEFAULT_SPEED))
+            raise ValueError('ThermalRecoverAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
 
-        if SetFanSpeedAction.JSON_FIELD_HIGHTEMP_SPEED in json_obj:
-            hightemp_speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_HIGHTEMP_SPEED])
-            if hightemp_speed < 0 or hightemp_speed > 100:
-                raise ValueError('SetFanSpeedAction invalid hightemp speed value {} in JSON policy file, valid value should be [0, 100]'.
-                                 format(hightemp_speed))
-            self.hightemp_speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_HIGHTEMP_SPEED])
+        if self.BCM_PID_PARAMS in json_obj:
+            bcm_pid_params = json_obj[self.BCM_PID_PARAMS]
+            if not isinstance(bcm_pid_params, list) or len(bcm_pid_params) != 4:
+                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                                 format(bcm_pid_params))
+            self.bcm_pid_params = bcm_pid_params
         else:
-            raise ValueError('SetFanSpeedAction missing mandatory field {} in JSON policy file'.
-                             format(SetFanSpeedAction.JSON_FIELD_HIGHTEMP_SPEED))
+            raise ValueError('ThermalRecoverAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
 
-        sonic_logger.log_warning("ThermalRecoverAction: default: {}, hightemp: {}".format(self.default_speed, self.hightemp_speed))
+        if self.F2B_LINEAR_PARAMS in json_obj:
+            f2b_linear_params = json_obj[self.F2B_LINEAR_PARAMS]
+            if not isinstance(f2b_linear_params, list) or len(f2b_linear_params) != 5:
+                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                                 format(f2b_linear_params))
+            self.f2b_linear_params = f2b_linear_params
+        else:
+            raise ValueError('ThermalRecoverAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
+
+        if self.B2F_LINEAR_PARAMS in json_obj:
+            b2f_linear_params = json_obj[self.B2F_LINEAR_PARAMS]
+            if not isinstance(b2f_linear_params, list) or len(b2f_linear_params) != 5:
+                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                                 format(b2f_linear_params))
+            self.b2f_linear_params = b2f_linear_params
+        else:
+            raise ValueError('ThermalRecoverAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
+
+        sonic_logger.log_info("ThermalRecoverAction: cpu_pid: {}, bcm_pid: {}, f2b_linear: {}, b2f_linear: {}".format(self.cpu_pid_params, self.bcm_pid_params, self.f2b_linear_params, self.b2f_linear_params))
 
     def execute(self, thermal_info_dict):
         """
@@ -111,15 +191,50 @@ class ThermalRecoverAction(SetFanSpeedAction):
         :param thermal_info_dict: A dictionary stores all thermal information.
         :return:
         """
+        if self.sys_airflow == None:
+            from .thermal_infos import ChassisInfo
+            if ChassisInfo.INFO_NAME in thermal_info_dict:
+                chassis_info_obj = thermal_info_dict[ChassisInfo.INFO_NAME]
+                chassis = chassis_info_obj.get_chassis()
+                self.sys_airflow = chassis.get_system_airflow()
+
+        if self.cpu_fan_controller == None:
+            self.cpu_fan_controller = PIDFanController(self.cpu_pid_params[0], self.cpu_pid_params[1],
+                                                       self.cpu_pid_params[2], self.cpu_pid_params[3])
+        if self.bcm_fan_controller == None:
+            self.bcm_fan_controller = PIDFanController(self.bcm_pid_params[0], self.bcm_pid_params[1],
+                                                       self.bcm_pid_params[2], self.bcm_pid_params[3])
+        if self.linear_fan_controller == None:
+            if self.sys_airflow == 'INTAKE':
+                linear_params = self.b2f_linear_params
+            else:
+                linear_params = self.f2b_linear_params
+            self.linear_fan_controller = LinearFanController(linear_params[0], linear_params[1], linear_params[2], \
+                                                             linear_params[3], linear_params[4])
+
         from .thermal_infos import ThermalInfo
         if ThermalInfo.INFO_NAME in thermal_info_dict and \
            isinstance(thermal_info_dict[ThermalInfo.INFO_NAME], ThermalInfo):
 
             thermal_info_obj = thermal_info_dict[ThermalInfo.INFO_NAME]
-            if thermal_info_obj.is_warm_up_and_over_high_threshold():
-                ThermalRecoverAction.set_all_fan_speed(thermal_info_dict, self.hightemp_speed)
-            elif thermal_info_obj.is_cool_down_and_below_low_threshold():
-                ThermalRecoverAction.set_all_fan_speed(thermal_info_dict, self.default_speed)
+            thermals_data = thermal_info_obj.get_thermals_data()
+            cpu_t = thermals_data["CPU_Temp"]
+            cpu_fan_pwm = self.cpu_fan_controller.calc_fan_speed(cpu_t.hist2_temp, cpu_t.hist1_temp, cpu_t.curr_temp)
+            bcm_t = thermals_data["BCM_SW_Temp"]
+            bcm_fan_pwm = self.bcm_fan_controller.calc_fan_speed(bcm_t.hist2_temp, bcm_t.hist1_temp, bcm_t.curr_temp)
+            if self.sys_airflow == 'INTAKE':
+                thermal = thermals_data["Base_Temp_U5"]
+                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+                thermal = thermals_data["Base_Temp_U56"]
+                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+            else:
+                thermal = thermals_data["Switch_Temp_U28"]
+                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+                thermal = thermals_data["Switch_Temp_U28"]
+                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+            target_fan_pwm = max(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2)
+            sonic_logger.log_info("ThermalRecoverAction: cpu_pid_pwm {}, bcm_pid_pwm {}, linear_fan_pwm: {}, linear_fan_pwm2 {}, target_pwm {}".format(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2, target_fan_pwm))
+            SetAllFanSpeedAction.set_all_fan_speed(thermal_info_dict, target_fan_pwm)
 
 
 @thermal_json_object('switch.shutdown')
@@ -135,9 +250,14 @@ class SwitchPolicyAction(ThermalPolicyActionBase):
         :param thermal_info_dict: A dictionary stores all thermal information.
         :return:
         """
-        sonic_logger.log_warning("Alarm for temperature critical is detected, reboot Device")
-        # import os
-        # os.system('reboot')
+        sonic_logger.log_warning("Alarm for temperature critical is detected, shutdown Device")
+        # Wait for 30s then shutdown
+        import time
+        time.sleep(30)
+        # Power off COMe through CPLD
+        CPLD_POWRE_OFF_CMD = "echo 0xa120 0xfc > /sys/bus/platform/devices/baseboard/setreg"
+        api_helper = APIHelper()
+        api_helper.get_cmd_output(CPLD_POWER_OFF_CMD)
 
 
 @thermal_json_object('thermal_control.control')
