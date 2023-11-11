@@ -9,6 +9,7 @@ try:
     import subprocess
     from .event import XcvrEvent
     from .helper import APIHelper
+    from .thermal import ThermalMon, THERMAL_MONITOR_SENSORS
     from sonic_py_common import logger
     from sonic_platform_pddf_base.pddf_chassis import PddfChassis
 except ImportError as e:
@@ -52,6 +53,11 @@ class Chassis(PddfChassis):
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
         self._api_helper = APIHelper()
+        if not self._api_helper.is_bmc_present():
+            thermal_count = len(self._thermal_list)
+            for idx, name in enumerate(THERMAL_MONITOR_SENSORS):
+                thermal = ThermalMon(thermal_count + idx, name)
+                self._thermal_list.append(thermal)
 
     def initizalize_system_led(self):
         """
