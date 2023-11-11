@@ -84,7 +84,8 @@
 
         "pwm_to_duty_cycle": "lambda pwm: ((pwm*100.0)/256)",
 
-        "FAN_MAX_RPM_SPEED":"24000"
+        "FRONT_FAN_MAX_RPM_SPEED":"24000",
+        "REAR_FAN_MAX_RPM_SPEED":"21000"
     }
 
 }
