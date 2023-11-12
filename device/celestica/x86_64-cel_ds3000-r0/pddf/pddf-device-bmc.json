@@ -5,7 +5,7 @@
     "num_fantrays":4,
     "num_fans_pertray":2,
     "num_ports":33,
-    "num_temps":7,
+    "num_temps":9,
     "num_components":9,
     "pddf_dev_types":
     {
@@ -1976,6 +1976,40 @@
                     { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"Switch_Temp_U29", "field_pos":"18"},
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U29", "field_pos":"3"},
                     { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Switch_Temp_U29", "field_pos":"14"}
+
+                ]
+            }
+        }
+    },
+    "TEMP8":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR"},
+        "dev_attr": { "display_name":"VDD_CORE_Temp"},
+        "bmc": {
+            "ipmitool" : {
+                "attr_list":
+                [
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"VDD_CORE_Temp", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"VDD_CORE_Temp", "field_pos":"18"},
+                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "VDD_CORE_Temp", "field_pos":"3"},
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "VDD_CORE_Temp", "field_pos":"14"}
+
+                ]
+            }
+        }
+    },
+    "TEMP9":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR"},
+        "dev_attr": { "display_name":"VDD_ANLG_Temp"},
+        "bmc": {
+            "ipmitool" : {
+                "attr_list":
+                [
+                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"VDD_ANLG_Temp", "field_pos":"20"},
+                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"VDD_ANLG_Temp", "field_pos":"18"},
+                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "VDD_ANLG_Temp", "field_pos":"3"},
+                    { "attr_name":"temp1_low_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "VDD_ANLG_Temp", "field_pos":"14"}
 
                 ]
             }
