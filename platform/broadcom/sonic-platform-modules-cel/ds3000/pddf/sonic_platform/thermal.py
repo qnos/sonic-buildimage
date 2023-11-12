@@ -39,13 +39,13 @@ class Thermal(PddfThermal):
 
 BCM_TEMP_GET_CMD = "cat /sys/devices/platform/fpga_sysfs/bcm_temp"
 THERMAL_MONITOR_SENSORS = ["CPU_Temp", "BCM_SW_Temp", "VDD_CORE_Temp", "VDD_ANLG_Temp"]
-THERMAL_THRESHOLDS = { "CPU_Temp":      { "high_threshold": 89, "low_threshold": 'N/A',
+THERMAL_THRESHOLDS = { "CPU_Temp":      { "high_threshold": 89, "low_threshold": 'N/A', "high_crit_threshold": 93,
                                           "temp_cmd": "r=$(cat /sys/class/thermal/thermal_zone1/temp) && printf '%.1f' $(($r / 1000))" },
-                       "BCM_SW_Temp":   { "high_threshold": 110, "low_threshold": 'N/A',
+                       "BCM_SW_Temp":   { "high_threshold": 110, "low_threshold": 'N/A', "high_crit_threshold": 120,
                                           "temp_cmd": "r=$(cat /sys/devices/platform/fpga_sysfs/bcm_temp) && printf '%.1f' $(((434100 - ((12500000 / $r - 1) * 535) + 5000) / 1000))"},
-                       "VDD_CORE_Temp": { "high_threshold": 120, "low_threshold": 'N/A',
+                       "VDD_CORE_Temp": { "high_threshold": 120, "low_threshold": 'N/A', "high_crit_threshold": 'N/A',
                                           "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon45/temp1_input) && printf '%.1f' $(($r / 1000))" },
-                       "VDD_ANLG_Temp": { "high_threshold": 120, "low_threshold": 'N/A',
+                       "VDD_ANLG_Temp": { "high_threshold": 120, "low_threshold": 'N/A', "high_crit_threshold": 'N/A',
                                          "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon44/temp1_input) && printf '%.1f' $(($r / 1000))" }}
 
 class ThermalMon(ThermalBase):
@@ -88,4 +88,11 @@ class ThermalMon(ThermalBase):
         if thermal_data == None:
             return 'N/A'
         threshold = thermal_data.get("low_threshold", 'N/A')
+        return float(threshold) if threshold != 'N/A' else 'N/A'
+
+    def get_high_critical_threshold(self):
+        thermal_data = THERMAL_THRESHOLDS.get(self.thermal_name, None)
+        if thermal_data == None:
+            return 'N/A'
+        threshold = thermal_data.get("high_crit_threshold", 'N/A')
         return float(threshold) if threshold != 'N/A' else 'N/A'
