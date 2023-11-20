@@ -156,12 +156,15 @@ class CpldWatchdog(WatchdogBase):
             return ret
 
         try:
-            if self.timeout != seconds:
-                self.timeout = self._settimeout(seconds)
             if self.armed:
                 self._keepalive()
+                if self.timeout != seconds:
+                    self._disable()
+                    time.sleep(1)
+                    self.timeout = self._settimeout(seconds)
+                    self._enable()
             else:
-                self._settimeout(seconds)
+                self.timeout = self._settimeout(seconds)
                 self._keepalive()
                 self._enable()
                 self.armed = True
