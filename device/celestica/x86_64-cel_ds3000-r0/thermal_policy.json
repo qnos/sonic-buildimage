@@ -106,7 +106,7 @@
             "actions": [
                 {
                     "type": "thermal.temp_check_and_set_all_fan_speed",
-                    "cpu_pid_params": [82, 3, 0.5, 0.2],
+                    "cpu_pid_params": [78, 3, 0.5, 0.2],
                     "bcm_pid_params": [88, 4, 0.3, 0.4],
                     "f2b_linear_params": [34, 54, 3, 35, 100],
                     "b2f_linear_params": [28, 48, 3, 35, 100]
