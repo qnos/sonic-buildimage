@@ -230,7 +230,7 @@ class ThermalRecoverAction(SetFanSpeedAction):
             else:
                 thermal = thermals_data["Switch_Temp_U28"]
                 linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
-                thermal = thermals_data["Switch_Temp_U28"]
+                thermal = thermals_data["Switch_Temp_U29"]
                 linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
             target_fan_pwm = max(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2)
             sonic_logger.log_info("ThermalRecoverAction: cpu_pid_pwm {}, bcm_pid_pwm {}, linear_fan_pwm: {}, linear_fan_pwm2 {}, target_pwm {}".format(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2, target_fan_pwm))
