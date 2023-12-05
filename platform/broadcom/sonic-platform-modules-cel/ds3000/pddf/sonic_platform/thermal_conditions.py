@@ -10,24 +10,35 @@ class FanCondition(ThermalPolicyConditionBase):
         else:
             return None
 
-@thermal_json_object('fan.any.absence')
-class AnyFanAbsenceCondition(FanCondition):
+@thermal_json_object('fantray.any.absence')
+class AnyFantrayAbsenceCondition(FanCondition):
     def is_match(self, thermal_info_dict):
         fan_info_obj = self.get_fan_info(thermal_info_dict)
-        return len(fan_info_obj.get_absence_fans()) > 0 if fan_info_obj else False
+        return len(fan_info_obj.get_absence_fantrays()) > 0 if fan_info_obj else False
 
-@thermal_json_object('fan.all.absence')
-class AllFanAbsenceCondition(FanCondition):
+@thermal_json_object('fantray.all.absence')
+class AllFantrayAbsenceCondition(FanCondition):
     def is_match(self, thermal_info_dict):
         fan_info_obj = self.get_fan_info(thermal_info_dict)
-        return len(fan_info_obj.get_presence_fans()) == 0 if fan_info_obj else False
+        return len(fan_info_obj.get_presence_fantrays()) == 0 if fan_info_obj else False
 
-@thermal_json_object('fan.all.presence')
-class AllFanPresenceCondition(FanCondition):
+@thermal_json_object('fantray.all.presence')
+class AllFantrayPresenceCondition(FanCondition):
     def is_match(self, thermal_info_dict):
         fan_info_obj = self.get_fan_info(thermal_info_dict)
-        return len(fan_info_obj.get_absence_fans()) == 0 if fan_info_obj else False
+        return len(fan_info_obj.get_absence_fantrays()) == 0 if fan_info_obj else True
 
+@thermal_json_object('fan.rotor.more_than_one.failed')
+class FanRotorMoreThanOneFailedCondition(FanCondition):
+    def is_match(self, thermal_info_dict):
+        fan_info_obj = self.get_fan_info(thermal_info_dict)
+        return len(fan_info_obj.get_absence_fans()) > 1 if fan_info_obj else False
+
+@thermal_json_object('fan.rotor.less_than_two.failed')
+class FanRotorLessThanTwoFailedCondition(FanCondition):
+    def is_match(self, thermal_info_dict):
+        fan_info_obj = self.get_fan_info(thermal_info_dict)
+        return len(fan_info_obj.get_absence_fans()) < 2 if fan_info_obj else True
 
 class PsuCondition(ThermalPolicyConditionBase):
     def get_psu_info(self, thermal_info_dict):
@@ -53,7 +64,7 @@ class AllPsuAbsenceCondition(PsuCondition):
 class AllPsuPresenceCondition(PsuCondition):
     def is_match(self, thermal_info_dict):
         psu_info_obj = self.get_psu_info(thermal_info_dict)
-        return len(psu_info_obj.get_absence_psus()) == 0 if psu_info_obj else False
+        return len(psu_info_obj.get_absence_psus()) == 0 if psu_info_obj else True
 
 
 class ThermalCondition(ThermalPolicyConditionBase):

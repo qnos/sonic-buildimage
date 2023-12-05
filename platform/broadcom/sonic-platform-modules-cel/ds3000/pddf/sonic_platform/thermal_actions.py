@@ -47,7 +47,7 @@ class SetFanSpeedAction(ThermalPolicyActionBase):
         from .thermal_infos import FanInfo
         if FanInfo.INFO_NAME in thermal_info_dict and isinstance(thermal_info_dict[FanInfo.INFO_NAME], FanInfo):
             fan_info_obj = thermal_info_dict[FanInfo.INFO_NAME]
-            for fan in fan_info_obj.get_presence_fans():
+            for fan in fan_info_obj.get_all_fans():
                 fan.set_speed(int(speed))
 
 
@@ -81,11 +81,15 @@ class LinearFanController():
         low_temp = self._low_temp - self._hyst_temp if descent else self._low_temp
         high_temp = self._high_temp - self._hyst_temp if descent else self._high_temp
         if temp <= low_temp:
+            sonic_logger.log_debug("[LinearController] temp: {} equal or lower than low temp: {}, set to lowest pwm: {}".format(temp, low_temp, self._low_pwm))
             return self._low_pwm
         elif temp >= high_temp:
+            sonic_logger.log_debug("[LinearController] temp: {} equal or higher than high temp: {}, set to highest pwm: {}".format(temp, high_temp, self._high_pwm))
             return self._high_pwm
         else:
-            return self._linear_slope * (temp - low_temp)
+            pwm = float(self._linear_slope * (temp - low_temp))
+            sonic_logger.log_debug("[LinearController] temp: {}, set to pwm: {}".format(temp, pwm))
+            return pwm
 
 class PIDFanController():
     """
@@ -110,14 +114,16 @@ class PIDFanController():
         elif speed < self.MIN_SPEED:
             speed = self.MIN_SPEED
         self._curr_speed = speed
+        sonic_logger.log_debug("[PIDController] setpoint: {} p: {} i: {} d: {}, temp: {} hist_temp1: {} hist_temp2: {}, pwm: {}".format(self._setpoint, self._p, self._i, self._d, temp, hist1_temp, hist2_temp, speed))
         return speed
 
 
-@thermal_json_object('thermal.temp_check_and_set_all_fan_speed')
-class ThermalRecoverAction(SetFanSpeedAction):
+@thermal_json_object('thermal.temp_check_and_fsc_algo_control')
+class ThermalAlgorithmAction(SetFanSpeedAction):
     """
     Action to check thermal sensor temperature change status and set speed for all fans
     """
+    THERMAL_LOG_LEVEL = "thermal_log_level"
     CPU_PID_PARAMS = "cpu_pid_params"
     BCM_PID_PARAMS = "bcm_pid_params"
     F2B_LINEAR_PARAMS = "f2b_linear_params"
@@ -136,54 +142,59 @@ class ThermalRecoverAction(SetFanSpeedAction):
 
     def load_from_json(self, json_obj):
         """
-        Construct ThermalRecoverAction via JSON. JSON example:
+        Construct ThermalAlgorithmAction via JSON. JSON example:
             {
-                "type": "thermal.temp_check_and_set_all_fan_speed",
+                "type": "thermal.temp_check_and_fsc_algo_control",
                 "cpu_pid_params": [82, 3, 0.5, 0.2],
                 "bcm_pid_params": [88, 4, 0.3, 0.4],
                 "f2b_linear_params": [34, 54, 3, 35, 100],
                 "b2f_linear_params": [28, 48, 3, 35, 100]
             }
-        :param json_obj: A JSON object representing a ThermalRecoverAction action.
+        :param json_obj: A JSON object representing a ThermalAlgorithmAction action.
         :return:
         """
+        if self.THERMAL_LOG_LEVEL in json_obj:
+            thermal_log_level = json_obj[self.THERMAL_LOG_LEVEL]
+            if not isinstance(thermal_log_level, int) or thermal_log_level not in range(0,8):
+                raise ValueError('ThermalAlgorithmAction invalid thermal log level, a interger in range 0-7 is required')
+            sonic_logger.set_min_log_priority(thermal_log_level)
         if self.CPU_PID_PARAMS in json_obj:
             cpu_pid_params = json_obj[self.CPU_PID_PARAMS]
             if not isinstance(cpu_pid_params, list) or len(cpu_pid_params) != 4:
-                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                raise ValueError('ThermalAlgorithmAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
                                  format(cpu_pid_params))
             self.cpu_pid_params = cpu_pid_params
         else:
-            raise ValueError('ThermalRecoverAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
+            raise ValueError('ThermalAlgorithmAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
 
         if self.BCM_PID_PARAMS in json_obj:
             bcm_pid_params = json_obj[self.BCM_PID_PARAMS]
             if not isinstance(bcm_pid_params, list) or len(bcm_pid_params) != 4:
-                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                raise ValueError('ThermalAlgorithmAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
                                  format(bcm_pid_params))
             self.bcm_pid_params = bcm_pid_params
         else:
-            raise ValueError('ThermalRecoverAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
+            raise ValueError('ThermalAlgorithmAction missing mandatory field [setpoint, p, i, d] in JSON policy file')
 
         if self.F2B_LINEAR_PARAMS in json_obj:
             f2b_linear_params = json_obj[self.F2B_LINEAR_PARAMS]
             if not isinstance(f2b_linear_params, list) or len(f2b_linear_params) != 5:
-                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                raise ValueError('ThermalAlgorithmAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
                                  format(f2b_linear_params))
             self.f2b_linear_params = f2b_linear_params
         else:
-            raise ValueError('ThermalRecoverAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
+            raise ValueError('ThermalAlgorithmAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
 
         if self.B2F_LINEAR_PARAMS in json_obj:
             b2f_linear_params = json_obj[self.B2F_LINEAR_PARAMS]
             if not isinstance(b2f_linear_params, list) or len(b2f_linear_params) != 5:
-                raise ValueError('ThermalRecoverAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
+                raise ValueError('ThermalAlgorithmAction invalid SetPoint PID {} in JSON policy file, valid value should be [point, p, i, d]'.
                                  format(b2f_linear_params))
             self.b2f_linear_params = b2f_linear_params
         else:
-            raise ValueError('ThermalRecoverAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
+            raise ValueError('ThermalAlgorithmAction missing mandatory field [low_temp, high_temp, hyst_temp, low_pwm, high_pwm] in JSON policy file')
 
-        sonic_logger.log_info("ThermalRecoverAction: cpu_pid: {}, bcm_pid: {}, f2b_linear: {}, b2f_linear: {}".format(self.cpu_pid_params, self.bcm_pid_params, self.f2b_linear_params, self.b2f_linear_params))
+        sonic_logger.log_info("[ThermalAlgorithmAction] cpu_pid: {}, bcm_pid: {}, f2b_linear: {}, b2f_linear: {}".format(self.cpu_pid_params, self.bcm_pid_params, self.f2b_linear_params, self.b2f_linear_params))
 
     def execute(self, thermal_info_dict):
         """
@@ -233,7 +244,7 @@ class ThermalRecoverAction(SetFanSpeedAction):
                 thermal = thermals_data["Switch_Temp_U29"]
                 linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
             target_fan_pwm = max(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2)
-            sonic_logger.log_info("ThermalRecoverAction: cpu_pid_pwm {}, bcm_pid_pwm {}, linear_fan_pwm: {}, linear_fan_pwm2 {}, target_pwm {}".format(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2, target_fan_pwm))
+            sonic_logger.log_info("[ThermalAlgorithmAction] cpu_pid_pwm: {}, bcm_pid_pwm: {}, linear_fan_pwm: {}, linear_fan_pwm2: {}, target_pwm: {}".format(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2, target_fan_pwm))
             SetAllFanSpeedAction.set_all_fan_speed(thermal_info_dict, target_fan_pwm)
 
 

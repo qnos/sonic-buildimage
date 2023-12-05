@@ -17,8 +17,11 @@ class FanInfo(ThermalPolicyInfoBase):
     FAN_REAR_HIGH_WARNING_SPEED = 25375
 
     def __init__(self):
+        self._all_fans = set()
         self._absence_fans = set()
         self._presence_fans = set()
+        self._absence_fantrays = set()
+        self._presence_fantrays = set()
         self._low_warning_fans = set()
         self._high_warning_fans = set()
         self._status_changed = False
@@ -30,42 +33,77 @@ class FanInfo(ThermalPolicyInfoBase):
         :return:
         """
         self._status_changed = False
-        for fan in chassis.get_all_fans():
-            if fan.get_presence() and fan not in self._presence_fans:
-                self._presence_fans.add(fan)
+        for fantray in chassis.get_all_fan_drawers():
+            if fantray.get_presence() and fantray not in self._presence_fantrays:
+                self._presence_fantrays.add(fantray)
                 self._status_changed = True
-                if fan in self._absence_fans:
-                    self._absence_fans.remove(fan)
-            elif not fan.get_presence() and fan not in self._absence_fans:
-                self._absence_fans.add(fan)
+                if fantray in self._absence_fantrays:
+                    self._absence_fantrays.remove(fantray)
+            elif not fantray.get_presence() and fantray not in self._absence_fantrays:
+                self._absence_fantrays.add(fantray)
                 self._status_changed = True
-                if fan in self._presence_fans:
-                    self._presence_fans.remove(fan)
+                if fantray in self._presence_fantrays:
+                    self._presence_fantrays.remove(fantray)
 
-            fan_name = fan.get_name()
-            fan_rpm = fan.get_speed_rpm()
-            # FAN Low speed warning
-            if fan_rpm < self.FAN_LOW_WARNING_SPEED and fan not in self._low_warning_fans:
-                self._low_warning_fans.add(fan)
-                sonic_logger.log_warning("FAN {} speed {}, low speed warning".format(fan_name, fan_rpm))
-            elif fan_rpm > self.FAN_LOW_WARNING_SPEED and fan in self._low_warning_fans:
-                sonic_logger.log_notice("FAN {}, restore from low speed warning".format(fan_name))
-                self._low_warning_fans.remove(fan)
-            # FAN high speed warning
-            if fan.fan_index == 1:
-                if fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
-                    self._high_warning_fans.add(fan)
-                    sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
-                elif fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
-                    self._high_warning_fans.remove(fan)
-                    sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
-            else:
-                if fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
-                    self._high_warning_fans.add(fan)
-                    sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
-                elif fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
-                    self._high_warning_fans.remove(fan)
-                    sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+            for fan in fantray.get_all_fans():
+                if fan.get_presence() and fantray not in self._presence_fans:
+                    self._presence_fans.add(fan)
+                    self._status_changed = True
+                    if fan in self._absence_fans:
+                        self._absence_fans.remove(fan)
+                elif not fan.get_presence() and fan not in self._absence_fans:
+                    self._absence_fans.add(fan)
+                    self._status_changed = True
+                    if fan in self._presence_fans:
+                        self._presence_fans.remove(fan)
+
+                fan_name = fan.get_name()
+                fan_rpm = fan.get_speed_rpm()
+                if fan not in self._all_fans:
+                    self._all_fans.add(fan)
+                # FAN Low speed warning
+                if fan_rpm < self.FAN_LOW_WARNING_SPEED and fan not in self._low_warning_fans:
+                    self._low_warning_fans.add(fan)
+                    sonic_logger.log_warning("FAN {} speed {}, low speed warning".format(fan_name, fan_rpm))
+                elif fan_rpm > self.FAN_LOW_WARNING_SPEED and fan in self._low_warning_fans:
+                    sonic_logger.log_notice("FAN {}, restore from low speed warning".format(fan_name))
+                    self._low_warning_fans.remove(fan)
+                # FAN high speed warning
+                if fan.fan_index == 1:
+                    if fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
+                        self._high_warning_fans.add(fan)
+                        sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
+                    elif fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
+                        self._high_warning_fans.remove(fan)
+                        sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+                else:
+                    if fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
+                        self._high_warning_fans.add(fan)
+                        sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
+                    elif fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
+                        self._high_warning_fans.remove(fan)
+                        sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+
+    def get_all_fans(self):
+        """
+        Retrieves all fans
+        :return: A set of fans
+        """
+        return self._all_fans
+
+    def get_absence_fantrays(self):
+        """
+        Retrieves absence fans
+        :return: A set of absence fantrays
+        """
+        return self._absence_fantrays
+
+    def get_presence_fantrays(self):
+        """
+        Retrieves presence fans
+        :return: A set of presence fantrays
+        """
+        return self._presence_fantrays
 
     def get_absence_fans(self):
         """

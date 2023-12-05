@@ -15,3 +15,11 @@ class FanDrawer(PddfFanDrawer):
         PddfFanDrawer.__init__(self, tray_idx, pddf_data, pddf_plugin_data)
 
     # Provide the functions/variables below for which implementation is to be overwritten
+    def get_presence(self):
+        status = False
+        # Usually if a tray is removed, all the fans inside it are absent
+        if self._fan_list and len(self._fan_list) == 2:
+            status = self._fan_list[0].get_presence() or self._fan_list[1].get_presence()
+        else:
+            status = self._fan_list[0].get_presence()
+        return status
