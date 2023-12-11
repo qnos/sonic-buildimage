@@ -33,56 +33,59 @@ class FanInfo(ThermalPolicyInfoBase):
         :return:
         """
         self._status_changed = False
-        for fantray in chassis.get_all_fan_drawers():
-            if fantray.get_presence() and fantray not in self._presence_fantrays:
-                self._presence_fantrays.add(fantray)
-                self._status_changed = True
-                if fantray in self._absence_fantrays:
-                    self._absence_fantrays.remove(fantray)
-            elif not fantray.get_presence() and fantray not in self._absence_fantrays:
-                self._absence_fantrays.add(fantray)
-                self._status_changed = True
-                if fantray in self._presence_fantrays:
-                    self._presence_fantrays.remove(fantray)
-
-            for fan in fantray.get_all_fans():
-                if fan.get_presence() and fantray not in self._presence_fans:
-                    self._presence_fans.add(fan)
+        try:
+            for fantray in chassis.get_all_fan_drawers():
+                if fantray.get_presence() and fantray not in self._presence_fantrays:
+                    self._presence_fantrays.add(fantray)
                     self._status_changed = True
-                    if fan in self._absence_fans:
-                        self._absence_fans.remove(fan)
-                elif not fan.get_presence() and fan not in self._absence_fans:
-                    self._absence_fans.add(fan)
+                    if fantray in self._absence_fantrays:
+                        self._absence_fantrays.remove(fantray)
+                elif not fantray.get_presence() and fantray not in self._absence_fantrays:
+                    self._absence_fantrays.add(fantray)
                     self._status_changed = True
-                    if fan in self._presence_fans:
-                        self._presence_fans.remove(fan)
+                    if fantray in self._presence_fantrays:
+                        self._presence_fantrays.remove(fantray)
 
-                fan_name = fan.get_name()
-                fan_rpm = fan.get_speed_rpm()
-                if fan not in self._all_fans:
-                    self._all_fans.add(fan)
-                # FAN Low speed warning
-                if fan_rpm < self.FAN_LOW_WARNING_SPEED and fan not in self._low_warning_fans:
-                    self._low_warning_fans.add(fan)
-                    sonic_logger.log_warning("FAN {} speed {}, low speed warning".format(fan_name, fan_rpm))
-                elif fan_rpm > self.FAN_LOW_WARNING_SPEED and fan in self._low_warning_fans:
-                    sonic_logger.log_notice("FAN {}, restore from low speed warning".format(fan_name))
-                    self._low_warning_fans.remove(fan)
-                # FAN high speed warning
-                if fan.fan_index == 1:
-                    if fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
-                        self._high_warning_fans.add(fan)
-                        sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
-                    elif fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
-                        self._high_warning_fans.remove(fan)
-                        sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
-                else:
-                    if fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
-                        self._high_warning_fans.add(fan)
-                        sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
-                    elif fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
-                        self._high_warning_fans.remove(fan)
-                        sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+                for fan in fantray.get_all_fans():
+                    if fan.get_presence() and fantray not in self._presence_fans:
+                        self._presence_fans.add(fan)
+                        self._status_changed = True
+                        if fan in self._absence_fans:
+                            self._absence_fans.remove(fan)
+                    elif not fan.get_presence() and fan not in self._absence_fans:
+                        self._absence_fans.add(fan)
+                        self._status_changed = True
+                        if fan in self._presence_fans:
+                            self._presence_fans.remove(fan)
+
+                    fan_name = fan.get_name()
+                    fan_rpm = fan.get_speed_rpm()
+                    if fan not in self._all_fans:
+                        self._all_fans.add(fan)
+                    # FAN Low speed warning
+                    if fan_rpm < self.FAN_LOW_WARNING_SPEED and fan not in self._low_warning_fans:
+                        self._low_warning_fans.add(fan)
+                        sonic_logger.log_warning("FAN {} speed {}, low speed warning".format(fan_name, fan_rpm))
+                    elif fan_rpm > self.FAN_LOW_WARNING_SPEED and fan in self._low_warning_fans:
+                        sonic_logger.log_notice("FAN {}, restore from low speed warning".format(fan_name))
+                        self._low_warning_fans.remove(fan)
+                    # FAN high speed warning
+                    if fan.fan_index == 1:
+                        if fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
+                            self._high_warning_fans.add(fan)
+                            sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
+                        elif fan_rpm > self.FAN_FRONT_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
+                            self._high_warning_fans.remove(fan)
+                            sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+                    else:
+                        if fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan not in self._high_warning_fans:
+                            self._high_warning_fans.add(fan)
+                            sonic_logger.log_warning("FAN {} speed {}, high speed warning".format(fan_name, fan_rpm))
+                        elif fan_rpm > self.FAN_REAR_HIGH_WARNING_SPEED and fan in self._high_warning_fans:
+                            self._high_warning_fans.remove(fan)
+                            sonic_logger.log_notice("FAN {}, restore from high speed warning".format(fan_name))
+        except Exception as e:
+            sonic_logger.log_warning("Catch exception: {}, File: {}, Line: {}".format(type(e).__name__, __file__, e.__traceback__.tb_lineno))
 
     def get_all_fans(self):
         """
@@ -162,27 +165,30 @@ class PsuInfo(ThermalPolicyInfoBase):
         :return:
         """
         self._status_changed = False
-        for psu in chassis.get_all_psus():
-            if psu.get_presence() and psu not in self._presence_psus:
-                self._presence_psus.add(psu)
-                self._status_changed = True
-                if psu in self._absence_psus:
-                    self._absence_psus.remove(psu)
-            elif (not psu.get_presence()) and psu not in self._absence_psus:
-                self._absence_psus.add(psu)
-                self._status_changed = True
-                if psu in self._presence_psus:
-                    self._presence_psus.remove(psu)
-            # PSU Temp high warning
-            psu_name = psu.get_name()
-            psu_temp = psu.get_temperature()
-            if psu_temp != None and psu_temp != 'N/A':
-                if psu_temp > self.PSU_TEMP_HIGH_WARNING_THRESHOLD and psu not in self._high_warning_psus:
-                    self._high_warning_psus.add(psu)
-                    sonic_logger.log_warning("PSU {} temp {}, high temperature warning".format(psu_name, psu_temp))
-                elif psu_temp < self.PSU_TEMP_HIGH_WARNING_THRESHOLD and psu in self._high_warning_psus:
-                    self._high_warning_psus.remove(psu)
-                    sonic_logger.log_notice("PSU {} restore from high temperature warning".format(psu_name))
+        try:
+            for psu in chassis.get_all_psus():
+                if psu.get_presence() and psu not in self._presence_psus:
+                    self._presence_psus.add(psu)
+                    self._status_changed = True
+                    if psu in self._absence_psus:
+                        self._absence_psus.remove(psu)
+                elif (not psu.get_presence()) and psu not in self._absence_psus:
+                    self._absence_psus.add(psu)
+                    self._status_changed = True
+                    if psu in self._presence_psus:
+                        self._presence_psus.remove(psu)
+                # PSU Temp high warning
+                psu_name = psu.get_name()
+                psu_temp = psu.get_temperature()
+                if psu_temp != None and psu_temp != 'N/A':
+                    if psu_temp > self.PSU_TEMP_HIGH_WARNING_THRESHOLD and psu not in self._high_warning_psus:
+                        self._high_warning_psus.add(psu)
+                        sonic_logger.log_warning("PSU {} temp {}, high temperature warning".format(psu_name, psu_temp))
+                    elif psu_temp < self.PSU_TEMP_HIGH_WARNING_THRESHOLD and psu in self._high_warning_psus:
+                        self._high_warning_psus.remove(psu)
+                        sonic_logger.log_notice("PSU {} restore from high temperature warning".format(psu_name))
+        except Exception as e:
+            sonic_logger.log_warning("Catch exception: {}, File: {}, Line: {}".format(type(e).__name__, __file__, e.__traceback__.tb_lineno))
 
     def get_absence_psus(self):
         """
@@ -259,44 +265,47 @@ class ThermalInfo(ThermalPolicyInfoBase):
         :param chassis: The chassis object
         :return:
         """
-        for thermal in chassis.get_all_thermals():
-            name = thermal.get_name()
-            temp = thermal.get_temperature()
-            if temp == None or temp == 'N/A':
-                continue
-            high_threshold = thermal.get_high_threshold()
-            low_threshold = thermal.get_low_threshold()
-            thermal_shutdown = self.THERMAL_SHUTDOWN_TEMP_MAP.get(name, None)
+        try:
+            for thermal in chassis.get_all_thermals():
+                name = thermal.get_name()
+                temp = thermal.get_temperature()
+                if temp == None or temp == 'N/A':
+                    continue
+                high_threshold = thermal.get_high_threshold()
+                low_threshold = thermal.get_low_threshold()
+                thermal_shutdown = self.THERMAL_SHUTDOWN_TEMP_MAP.get(name, None)
 
-            # Collect thermal data
-            thermal_data = self._thermals_data.get(name, None)
-            if thermal_data == None:
-                thermal_data = ThermalData(name)
-                self._thermals_data[name] = thermal_data
-            thermal_data.update_temp(temp).update_temp_trend()
+                # Collect thermal data
+                thermal_data = self._thermals_data.get(name, None)
+                if thermal_data == None:
+                    thermal_data = ThermalData(name)
+                    self._thermals_data[name] = thermal_data
+                thermal_data.update_temp(temp).update_temp_trend()
 
-            # Handle high threshold condition
-            if high_threshold != None and high_threshold != 'N/A':
-                if temp > high_threshold and thermal not in self._high_warning_thermals:
-                    self._high_warning_thermals.add(thermal)
-                    sonic_logger.log_warning("Thermal {} temp {}, high threshold warning".format(name, temp))
-                    if thermal_shutdown != None and temp > thermal_shutdown:
-                        self._high_shutdown_thermals.add(thermal)
-                        sonic_logger.log_warning("Thermal {} temp {}, high temp shutdown warning".format(name, temp))
-                elif temp < (high_threshold - 3) and thermal in self._high_warning_thermals:
-                    self._high_warning_thermals.remove(thermal)
-                    sonic_logger.log_notice("Thermal {}, restore from high threshold warning".format(name))
-                    if thermal in self._high_shutdown_thermals:
-                        self._high_shutdown_thermals.remove(thermal)
+                # Handle high threshold condition
+                if high_threshold != None and high_threshold != 'N/A':
+                    if temp > high_threshold and thermal not in self._high_warning_thermals:
+                        self._high_warning_thermals.add(thermal)
+                        sonic_logger.log_warning("Thermal {} temp {}, high threshold warning".format(name, temp))
+                        if thermal_shutdown != None and temp > thermal_shutdown:
+                            self._high_shutdown_thermals.add(thermal)
+                            sonic_logger.log_warning("Thermal {} temp {}, high temp shutdown warning".format(name, temp))
+                    elif temp < (high_threshold - 3) and thermal in self._high_warning_thermals:
+                        self._high_warning_thermals.remove(thermal)
+                        sonic_logger.log_notice("Thermal {}, restore from high threshold warning".format(name))
+                        if thermal in self._high_shutdown_thermals:
+                            self._high_shutdown_thermals.remove(thermal)
 
-            # Handle low threshold condition
-            if low_threshold != None and low_threshold != 'N/A':
-                if temp < low_threshold and thermal not in self._low_warning_thermals:
-                    self._low_warning_thermals.add(thermal)
-                    sonic_logger.log_warning("Thermal {} temp {}, low threshold warning".format(name, temp))
-                elif temp > (low_threshold + 3) and thermal in self._high_warning_thermals:
-                    self._low_warning_thermals.remove(thermal)
-                    sonic_logger.log_notice("Thermal {}, restore from low threshold warning".format(name))
+                # Handle low threshold condition
+                if low_threshold != None and low_threshold != 'N/A':
+                    if temp < low_threshold and thermal not in self._low_warning_thermals:
+                        self._low_warning_thermals.add(thermal)
+                        sonic_logger.log_warning("Thermal {} temp {}, low threshold warning".format(name, temp))
+                    elif temp > (low_threshold + 3) and thermal in self._low_warning_thermals:
+                        self._low_warning_thermals.remove(thermal)
+                        sonic_logger.log_notice("Thermal {}, restore from low threshold warning".format(name))
+        except Exception as e:
+            sonic_logger.log_warning("Catch exception: {}, File: {}, Line: {}".format(type(e).__name__, __file__, e.__traceback__.tb_lineno))
 
     def is_any_warm_up_and_over_high_threshold(self):
         """

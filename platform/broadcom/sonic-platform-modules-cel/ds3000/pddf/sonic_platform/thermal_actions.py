@@ -76,35 +76,52 @@ class LinearFanController():
         self._low_pwm = low_pwm
         self._high_pwm = high_pwm
         self._linear_slope = (high_pwm - low_pwm) / (high_temp - low_temp)
+        self._last_pwm = None
 
-    def calc_fan_speed(self, temp, descent=False):
-        low_temp = self._low_temp - self._hyst_temp if descent else self._low_temp
-        high_temp = self._high_temp - self._hyst_temp if descent else self._high_temp
+    def calc_fan_speed(self, thermal_data):
+        temp = thermal_data.curr_temp
+        descend = thermal_data.temp_descend
+
+        low_temp = self._low_temp - self._hyst_temp if descend else self._low_temp
+        high_temp = self._high_temp - self._hyst_temp if descend else self._high_temp
         if temp <= low_temp:
             sonic_logger.log_debug("[LinearController] temp: {} equal or lower than low temp: {}, set to lowest pwm: {}".format(temp, low_temp, self._low_pwm))
+            self._last_pwm = self._low_pwm
             return self._low_pwm
         elif temp >= high_temp:
             sonic_logger.log_debug("[LinearController] temp: {} equal or higher than high temp: {}, set to highest pwm: {}".format(temp, high_temp, self._high_pwm))
+            self._last_pwm = self._high_pwm
             return self._high_pwm
         else:
-            pwm = float(self._linear_slope * (temp - low_temp))
-            sonic_logger.log_debug("[LinearController] temp: {}, set to pwm: {}".format(temp, pwm))
+            pwm = float(self._linear_slope * (temp - low_temp) + self._low_pwm)
+            if descend:
+                if self._last_pwm != None and pwm > self._last_pwm:
+                    pwm = self._last_pwm
+            else:
+                if self._last_pwm != None and pwm < self._last_pwm:
+                    pwm = self._last_pwm
+            self._last_pwm = pwm
+            sonic_logger.log_debug("[LinearController] temp: {}, slope: {}, low_temp: {}, low_pwm: {}, set to pwm: {}".format(temp, self._linear_slope, low_temp, self._low_pwm, pwm))
             return pwm
 
 class PIDFanController():
     """
     Common FAN PID controller for CPU and BCM Temp
     """
-    MAX_SPEED = 100
-    MIN_SPEED = 35
+    MAX_SPEED = 255
+    MIN_SPEED = 89
     def __init__(self, setpoint, p_val, i_val, d_val):
         self._setpoint = setpoint
         self._p = p_val
         self._i = i_val
         self._d = d_val
-        self._curr_speed = 35
+        self._curr_speed = self.MIN_SPEED
 
-    def calc_fan_speed(self, hist2_temp, hist1_temp, temp):
+    def calc_fan_speed(self, thermal_data):
+        hist2_temp = thermal_data.hist2_temp
+        hist1_temp = thermal_data.hist1_temp
+        temp = thermal_data.curr_temp
+
         if hist2_temp == None or hist1_temp == None:
             return self._curr_speed
         speed = self._curr_speed + self._p * (temp - hist1_temp) \
@@ -114,8 +131,9 @@ class PIDFanController():
         elif speed < self.MIN_SPEED:
             speed = self.MIN_SPEED
         self._curr_speed = speed
-        sonic_logger.log_debug("[PIDController] setpoint: {} p: {} i: {} d: {}, temp: {} hist_temp1: {} hist_temp2: {}, pwm: {}".format(self._setpoint, self._p, self._i, self._d, temp, hist1_temp, hist2_temp, speed))
-        return speed
+        speed_percent = float(speed / 2.55)
+        sonic_logger.log_debug("[PIDController] setpoint: {} p: {} i: {} d: {}, temp: {} hist_temp1: {} hist_temp2: {}, pwm: {}, percent: {}".format(self._setpoint, self._p, self._i, self._d, temp, hist1_temp, hist2_temp, speed, speed_percent))
+        return speed_percent
 
 
 @thermal_json_object('thermal.temp_check_and_fsc_algo_control')
@@ -229,23 +247,23 @@ class ThermalAlgorithmAction(SetFanSpeedAction):
 
             thermal_info_obj = thermal_info_dict[ThermalInfo.INFO_NAME]
             thermals_data = thermal_info_obj.get_thermals_data()
-            cpu_t = thermals_data["CPU_Temp"]
-            cpu_fan_pwm = self.cpu_fan_controller.calc_fan_speed(cpu_t.hist2_temp, cpu_t.hist1_temp, cpu_t.curr_temp)
-            bcm_t = thermals_data["BCM_SW_Temp"]
-            bcm_fan_pwm = self.bcm_fan_controller.calc_fan_speed(bcm_t.hist2_temp, bcm_t.hist1_temp, bcm_t.curr_temp)
+            cpu_thermal_data = thermals_data["CPU_Temp"]
+            cpu_fan_pwm = self.cpu_fan_controller.calc_fan_speed(cpu_thermal_data)
+            bcm_thermal_data = thermals_data["BCM_SW_Temp"]
+            bcm_fan_pwm = self.bcm_fan_controller.calc_fan_speed(bcm_thermal_data)
             if self.sys_airflow == 'INTAKE':
-                thermal = thermals_data["Base_Temp_U5"]
-                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
-                thermal = thermals_data["Base_Temp_U56"]
-                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+                thermal_data = thermals_data["Base_Temp_U5"]
+                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal_data)
+                thermal_data = thermals_data["Base_Temp_U56"]
+                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal_data)
             else:
-                thermal = thermals_data["Switch_Temp_U28"]
-                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
-                thermal = thermals_data["Switch_Temp_U29"]
-                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal.curr_temp, thermal.temp_descend)
+                thermal_data = thermals_data["Switch_Temp_U28"]
+                linear_fan_pwm1 = self.linear_fan_controller.calc_fan_speed(thermal_data)
+                thermal_data = thermals_data["Switch_Temp_U29"]
+                linear_fan_pwm2 = self.linear_fan_controller.calc_fan_speed(thermal_data)
             target_fan_pwm = max(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2)
             sonic_logger.log_info("[ThermalAlgorithmAction] cpu_pid_pwm: {}, bcm_pid_pwm: {}, linear_fan_pwm: {}, linear_fan_pwm2: {}, target_pwm: {}".format(cpu_fan_pwm, bcm_fan_pwm, linear_fan_pwm1, linear_fan_pwm2, target_fan_pwm))
-            SetAllFanSpeedAction.set_all_fan_speed(thermal_info_dict, target_fan_pwm)
+            SetAllFanSpeedAction.set_all_fan_speed(thermal_info_dict, round(target_fan_pwm))
 
 
 @thermal_json_object('switch.shutdown')
