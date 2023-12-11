@@ -103,7 +103,7 @@ class Fan(PddfFan):
 
             max_speed = int(self.plugin_data['PSU']['PSU_FAN_MAX_SPEED'])
             speed_percentage = round((speed*100)/max_speed)
-            return speed_percentage
+            return speed_percentage if speed_percentage <= 100 else 100
         else:
             # Get fan rpm instead of fan pwm
             idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
