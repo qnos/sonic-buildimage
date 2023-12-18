@@ -123,7 +123,7 @@ class PIDFanController():
         temp = thermal_data.curr_temp
 
         if hist2_temp == None or hist1_temp == None:
-            return self._curr_speed
+            return round(self._curr_speed / 2.55)
         speed = self._curr_speed + self._p * (temp - hist1_temp) \
             + self._i * (temp - self._setpoint) + self._d * (temp - 2 * hist1_temp + hist2_temp)
         if speed > self.MAX_SPEED:
