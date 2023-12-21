@@ -119,7 +119,7 @@ class CpldWatchdog(WatchdogBase):
         seconds = int((int(data[2], 16) << 16
                 | int(data[1], 16) << 8
                 | int(data[0], 16)) / 1000)
-        return seconds if self._active() else -1
+        return seconds
 
     def _gettimeleft(self):
         """
