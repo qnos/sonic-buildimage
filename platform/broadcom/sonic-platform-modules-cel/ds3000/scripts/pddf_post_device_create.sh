@@ -17,5 +17,5 @@ echo "mp2975 0x7a" > /sys/bus/i2c/devices/i2c-108/new_device
 # Set SYS_LED to Green, assuming everything came up fine.
 echo "0xa162 0xdc" > ${CPLD_SETREG}
 
-# Enable thermal shutdown by default
-echo "0xa175 0x1" > ${CPLD_SETREG}
+# Disable CPLD thermal shutdown by default
+echo "0xa175 0x0" > ${CPLD_SETREG}
