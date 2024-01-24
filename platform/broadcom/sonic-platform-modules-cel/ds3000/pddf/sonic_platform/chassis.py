@@ -15,7 +15,7 @@ try:
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
 
-RESET_SOURCE_OS_REG = '0xa106'
+RESET_SOURCE_BIOS_REG = '0xa107'
 LPC_SYSLED_REG = '0xa162'
 LPC_GETREG_PATH = "/sys/bus/platform/devices/baseboard/getreg"
 LPC_SETREG_PATH = "/sys/bus/platform/devices/baseboard/setreg"
@@ -144,20 +144,14 @@ class Chassis(PddfChassis):
             is "REBOOT_CAUSE_HARDWARE_OTHER", the second string can be used
             to pass a description of the reboot cause.
         """
-        hw_reboot_cause = self._api_helper.lpc_getreg(LPC_GETREG_PATH, RESET_SOURCE_OS_REG)
+        hw_reboot_cause = self._api_helper.lpc_getreg(LPC_GETREG_PATH, RESET_SOURCE_BIOS_REG)
 
-        if hw_reboot_cause == "0x99":
-            reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_ASIC
-            description = 'ASIC Overload Reboot'
-        elif hw_reboot_cause == "0x88":
-            reboot_cause = self.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU
-            description = 'CPU Overload Reboot'
+        if hw_reboot_cause == "0x77":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Power Cycle Reset'
         elif hw_reboot_cause == "0x66":
             reboot_cause = self.REBOOT_CAUSE_WATCHDOG
             description = 'Hardware Watchdog Reset'
-        elif hw_reboot_cause == "0x55":
-            reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
-            description = 'CPU Cold Reset'
         elif hw_reboot_cause == "0x44":
             reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
             description = 'CPU Warm Reset'
