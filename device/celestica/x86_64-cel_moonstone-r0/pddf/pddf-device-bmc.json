@@ -27,7 +27,7 @@
         "pddf_kos":
         [
             "pddf_client_module",
-            "pddf_custom_mux",
+            "pddf_mux_module",
             "pddf_fpgapci_driver",
             "pddf_cpld_module",
             "pddf_cpld_driver",
@@ -173,7 +173,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x70", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x7"},
+            "dev_attr": { "virt_bus":"0x7", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT1" },
@@ -193,7 +193,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x71", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0xF"},
+            "dev_attr": { "virt_bus":"0xF", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT9" },
@@ -213,7 +213,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x72", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x17"},
+            "dev_attr": { "virt_bus":"0x17", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT17" },
@@ -233,7 +233,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x73", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x1F"},
+            "dev_attr": { "virt_bus":"0x1F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT25" },
@@ -253,7 +253,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x70", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x27"},
+            "dev_attr": { "virt_bus":"0x27", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT33" },
@@ -273,7 +273,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x71", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x2F"},
+            "dev_attr": { "virt_bus":"0x2F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT41" },
@@ -293,7 +293,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x72", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x37"},
+            "dev_attr": { "virt_bus":"0x37", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT49" },
@@ -313,7 +313,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x73", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x3F"},
+            "dev_attr": { "virt_bus":"0x3F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT57" },
@@ -3268,7 +3268,7 @@
     "PORT66":
     {
         "dev_info": { "device_type":"SFP28", "device_name":"SFP28_2", "device_parent":"SMBUS6"},
-        "dev_attr": { "dev_idx":"65"},
+        "dev_attr": { "dev_idx":"66"},
         "i2c":
         {
             "interface":

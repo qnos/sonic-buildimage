@@ -5,18 +5,12 @@ import re
 import struct
 import subprocess
 
+BMC_PRES_SYS_PATH = '/sys/devices/platform/sys_cpld/bmc_present_l'
+
 class APIHelper():
 
     def __init__(self):
         pass
-
-    def with_bmc(self):
-        status, result = self.grep("ipmitool mc info", "Firmware Revision")
-        if status:
-            bmc_ver_data = result.split(":")
-            if len(bmc_ver_data) > 0:
-                return True
-        return False
 
     def run_command(self, cmd):
         status = True
@@ -78,7 +72,14 @@ class APIHelper():
             status, result = self.grep(cmd, str(key))
         return status, result
 
-# only for test
-if __name__ == "__main__":
-    API = APIHelper()
-    print(API.with_bmc())
+    def with_bmc(self):
+        """
+        Get the BMC card present status
+
+        Returns:
+            A boolean, True if present, False if absent
+        """
+        presence = self.read_txt_file(BMC_PRES_SYS_PATH)
+        if presence == None:
+            print("Failed to get BMC card presence status")
+        return True if presence == "0" else False

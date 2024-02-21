@@ -28,10 +28,10 @@ class CpldWatchdog(WatchdogBase):
             A boolean, True if watchdog is armed, False if not
         """
 
-        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog0/state", "r") as fd:
+        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/state", "r") as fd:
             txt = fd.read()
         state = txt.strip()
-        self.is_armed = True if state == "active" else False
+        self.is_armed = False if state == "0x0" else True
 
         return self.is_armed
 
@@ -66,14 +66,14 @@ class CpldWatchdog(WatchdogBase):
         """
 
         if self.watchdog is None:
-            self.watchdog = os.open("/dev/watchdog0", os.O_RDWR)
+            self.watchdog = os.open("/dev/watchdog1", os.O_RDWR)
 
-        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog0/settimeout", "w") as fd:
+        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/settimeout", "w") as fd:
             fd.write("%d" % seconds)
         self.watchdog.write('k')
 
         if self.is_armed():
-            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog0/settimeout", "r") as fd:
+            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/settimeout", "r") as fd:
                 timeout = int(fd.read().strip())
         else:
             timeout = -1
@@ -89,7 +89,7 @@ class CpldWatchdog(WatchdogBase):
         """
 
         if self.is_armed():
-            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog0/timeleft", "r") as fd:
+            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/timeleft", "r") as fd:
                 timeleft = int(fd.read().strip())
             return timeleft
         else:
