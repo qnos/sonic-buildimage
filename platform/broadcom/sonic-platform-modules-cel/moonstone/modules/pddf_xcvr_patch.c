@@ -44,21 +44,35 @@ extern XCVR_SYSFS_ATTR_OPS xcvr_ops[];
 extern void *get_device_table(char *name);
 extern int (*ptr_fpgapci_read)(uint32_t);
 extern int (*ptr_fpgapci_write)(uint32_t, uint32_t);
-extern int board_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 static int pddf_xcvr_select(struct i2c_client *client, XCVR_ATTR *adata, struct xcvr_data *data)
 {
-	uint8_t index;
-	
-	if (data->index < 32){
-		index = data->index;
-		board_i2c_cpld_write(0x30, 0x10, index);
-	}else if (data->index < 64){
-		index = data->index - 32;
-		board_i2c_cpld_write(0x31, 0x10, index);
-	}
-	
-    return 0;
+    uint8_t index;
+    uint32_t devaddr = 0x10;
+    char devname[32]; 
+    int status = -1;
+    
+    if (data->index < 32){
+        index = data->index;
+        devaddr = 0x30;
+        strcpy(devname, "CPLD1");
+    }else if (data->index < 64){
+        index = data->index - 32;
+        devaddr = 0x31;
+        strcpy(devname, "CPLD2");
+    }else{
+        status = 0;
+    }
+    
+    if (data->index < 64){
+        msleep(60);
+        status = board_i2c_cpld_write_new(devaddr, devname, 0x10, (uint8_t)index);
+    }
+    
+    if (status < 0)
+        printk(KERN_ERR "Error: Failed to write port index to CPLD register, data->index = %d\n", data->index);
+    
+    return status;
 }
 
 static int xcvr_i2c_cpld_read(XCVR_ATTR *info)
