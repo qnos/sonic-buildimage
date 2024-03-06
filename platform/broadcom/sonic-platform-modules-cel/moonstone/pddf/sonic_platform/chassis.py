@@ -23,6 +23,7 @@ try:
     from .helper import APIHelper
     import sys
     import subprocess
+    from .event import XcvrEvent
     from sonic_py_common import device_info
     from sonic_platform_base.sfp_base import SfpBase
 except ImportError as e:
@@ -40,10 +41,6 @@ class Chassis(PddfChassis):
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
         self._api_helper = APIHelper()
         self.__initialize_components()
-        self._transceiver_presence = {}
-        for port in range(len(self._sfp_list)):
-            self._transceiver_presence[port] = False
-        self.POLL_INTERVAL = 1
 
     def __initialize_components(self):
 
@@ -251,15 +248,9 @@ class Chassis(PddfChassis):
         else:
             raise NotImplementedError
 
-    def _get_transceiver_presence(self):
-
-        transceiver_presence = {}
-        for port in range(len(self._sfp_list)):
-            port_status = self.get_sfp(port+1).get_presence()
-            transceiver_presence[port] = port_status
-
-        return transceiver_presence
-
+    ##############################################################
+    ###################### Event methods #########################
+    ##############################################################
     def get_change_event(self, timeout=0):
         """
         Returns a nested dictionary containing all devices which have
@@ -283,46 +274,14 @@ class Chassis(PddfChassis):
                       indicates that fan 0 has been removed, fan 2
                       has been inserted and sfp 11 has been removed.
         """
-        port_dict = {}
-        ret_dict = {'sfp': port_dict}
-        forever = False
+        # SFP event
+        if self.get_num_sfps() == 0:
+            for index in range(self.platform_inventory['num_ports']):
+                sfp = Sfp(index, self.pddf_obj, self.plugin_data)
+                self._sfp_list.append(sfp)
 
-        if timeout == 0:
-            forever = True
-        elif timeout > 0:
-            timeout = timeout / float(1000) # Convert to secs
-        else:
-            return False, ret_dict # Incorrect timeout
+        succeed, sfp_event = XcvrEvent(self._sfp_list).get_xcvr_event(timeout)
+        if succeed:
+            return True, {'sfp': sfp_event}
 
-        while True:
-            if forever:
-                timer = self.POLL_INTERVAL
-            else:
-                timer = min(timeout, self.POLL_INTERVAL)
-                start_time = time.time()
-
-            time.sleep(timer)
-            cur_presence = self._get_transceiver_presence()
-            changed = False
-
-            for port in range(len(self._sfp_list)):
-                if cur_presence[port] != self._transceiver_presence[port]:
-                    # qsfp_modprs True => optics is inserted
-                    if cur_presence[port]:
-                        port_dict[port] = '1'
-                    # qsfp_modprs False => optics is removed
-                    else:
-                        port_dict[port] = '0'
-                    changed = True
-
-            if changed:
-                self._transceiver_presence = cur_presence
-                break
-
-            if not forever:
-                elapsed_time = time.time() - start_time
-                timeout = round(timeout - elapsed_time, 3)
-                if timeout <= 0:
-                    break
-
-        return True, ret_dict
+        return False, {'sfp': {}}

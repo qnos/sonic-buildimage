@@ -45,12 +45,30 @@ extern void *get_device_table(char *name);
 extern int (*ptr_fpgapci_read)(uint32_t);
 extern int (*ptr_fpgapci_write)(uint32_t, uint32_t);
 
+static struct mutex osfp_mutex;
+
+int osfp_mutex_lock(void)
+{
+    mutex_lock(&osfp_mutex);
+    return 0;
+}
+
+int osfp_mutex_unlock(void)
+{
+    mutex_unlock(&osfp_mutex);
+    return 0;
+}
+
+EXPORT_SYMBOL(osfp_mutex_lock);
+EXPORT_SYMBOL(osfp_mutex_unlock);
+
 static int pddf_xcvr_select(struct i2c_client *client, XCVR_ATTR *adata, struct xcvr_data *data)
 {
     uint8_t index;
     uint32_t devaddr = 0x10;
     char devname[32]; 
     int status = -1;
+    int retry = 10;
     
     if (data->index < 32){
         index = data->index;
@@ -65,14 +83,33 @@ static int pddf_xcvr_select(struct i2c_client *client, XCVR_ATTR *adata, struct 
     }
     
     if (data->index < 64){
-        msleep(60);
-        status = board_i2c_cpld_write_new(devaddr, devname, 0x10, (uint8_t)index);
+        osfp_mutex_lock();
+        while (retry)
+        {
+            status = board_i2c_cpld_write_new(devaddr, devname, 0x10, (uint8_t)index);
+            if (unlikely(status < 0))
+            {
+                msleep(60);
+                retry--;
+                continue;
+            }
+            break;
+        }
     }
     
     if (status < 0)
         printk(KERN_ERR "Error: Failed to write port index to CPLD register, data->index = %d\n", data->index);
     
     return status;
+}
+
+static int pddf_xcvr_release(struct i2c_client *client, XCVR_ATTR *adata, struct xcvr_data *data)
+{   
+    if (data->index < 64){
+        osfp_mutex_unlock();
+    }
+    
+    return 0;
 }
 
 static int xcvr_i2c_cpld_read(XCVR_ATTR *info)
@@ -484,24 +521,40 @@ static int pddf_set_mod_txdisable(struct i2c_client *client, XCVR_ATTR *info, st
 
 static int __init pddf_xcvr_patch_init(void)
 {
+    mutex_init(&osfp_mutex);
+
     xcvr_ops[XCVR_PRESENT].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_PRESENT].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_PRESENT].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_PRESENT].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_RESET].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_RESET].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_RESET].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_RESET].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_INTR_STATUS].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_INTR_STATUS].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_INTR_STATUS].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_INTR_STATUS].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_LPMODE].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_LPMODE].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_LPMODE].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_LPMODE].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_RXLOS].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_RXLOS].do_get = pddf_get_mod_rxlos;
     xcvr_ops[XCVR_RXLOS].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_RXLOS].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_RXLOS].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_TXDISABLE].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_TXDISABLE].do_get = pddf_get_mod_txdisable;
     xcvr_ops[XCVR_TXDISABLE].do_set = pddf_set_mod_txdisable;
     xcvr_ops[XCVR_TXDISABLE].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_TXDISABLE].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_TXDISABLE].post_set = pddf_xcvr_release;
     xcvr_ops[XCVR_TXFAULT].pre_get = pddf_xcvr_select;
     xcvr_ops[XCVR_TXFAULT].do_get = pddf_get_mod_txfault;
     xcvr_ops[XCVR_TXFAULT].pre_set = pddf_xcvr_select;
+    xcvr_ops[XCVR_TXFAULT].post_get = pddf_xcvr_release;
+    xcvr_ops[XCVR_TXFAULT].post_set = pddf_xcvr_release;
     return 0;
 }
 
