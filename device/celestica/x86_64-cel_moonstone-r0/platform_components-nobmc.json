@@ -2,12 +2,12 @@
     "chassis": {
         "Moonstone": {
             "component": {
-                "BIOS": {},
-                "CPLD_BASEBOARD": {},
-                "CPLD1_SWITCHBOARD": {},
-                "CPLD2_SWITCHBOARD": {},
-                "CPLD_COMEBOARD": {},
+                "SwitchCPLD1": {},
+                "SwitchCPLD2": {},
+                "BaseCPLD": {},
+                "ComeCPLD": {},
                 "FPGA": {},
+                "BIOS": {},
                 "ONIE": {},
                 "SSD": {}
             }
