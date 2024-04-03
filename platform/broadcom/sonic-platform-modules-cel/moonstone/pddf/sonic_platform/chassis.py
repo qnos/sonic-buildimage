@@ -17,10 +17,10 @@ try:
     from sonic_platform_base.chassis_base import ChassisBase
     from sonic_platform.fan_drawer import FanDrawer
     from sonic_platform.fan import Fan
-    from sonic_platform.sfp import Sfp
+    from sonic_platform.sfp import Sfp  
     from sonic_platform.watchdog import Watchdog
     from sonic_platform.component import Component
-    from .helper import APIHelper
+    from .helper import APIHelper   
     import sys
     import subprocess
     from .event import XcvrEvent
@@ -35,18 +35,23 @@ class Chassis(PddfChassis):
     """
 
     # Provide the functions/variables below for which implementation is to be overwritten
-
+    
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
 
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
-        self._api_helper = APIHelper()
+        self._api_helper = APIHelper()          
         self.__initialize_components()
+        self.STATUS_LED_COLOR_AUTO = 'auto'
+        self.STATUS_LED_COLOR_MIX_BLINK = 'mix_blink'
+        self.STATUS_LED_COLOR_GREEN_BLINK = 'green_blink'
+        self.STATUS_LED_COLOR_AMBER_BLINK = 'green_blink'
+        self.STATUS_LED_COLOR_UNKNOWN = 'unknown'
 
     def __initialize_components(self):
 
         self.NUM_COMPONENT = 8
-
-        if self._api_helper.with_bmc():
+    
+        if self._api_helper.with_bmc(): 
             self.NUM_COMPONENT = self.NUM_COMPONENT + 1
 
         for index in range(0, self.NUM_COMPONENT):
@@ -61,16 +66,16 @@ class Chassis(PddfChassis):
 
     def get_all_modules(self):
         return []
-
+            
     def initizalize_system_led(self):
         return True
 
     def get_eeprom(self):
         return self._eeprom
-
+        
     def get_all_sfps(self):
         return self._sfp_list
-
+        
     def get_sfp(self, index):
         sfp = None
 
@@ -95,137 +100,140 @@ class Chassis(PddfChassis):
             self._watchdog = Watchdog()
 
         return self._watchdog
-
-    def get_reboot_cause(self):
-        """
-        Retrieves the cause of the previous reboot
-        Returns:
-            A tuple (string, string) where the first element is a string
-            containing the cause of the previous reboot. This string must be
-            one of the predefined strings in this class. If the first string
-            is "REBOOT_CAUSE_HARDWARE_OTHER", the second string can be used
-            to pass a description of the reboot cause.
-        """
-
-        if self._api_helper.with_bmc():
-
-            cmd_str = self._api_helper.bmc_cmd_format(self, "get_reboot_cause")
-            status, result = self._api_helper.ipmi_raw(cmd_str)
-            status = status.split()[0] if status and len(status.split()) > 0 else 00
-
-            reboot_cause = {
-                "00": self.REBOOT_CAUSE_HARDWARE_OTHER,
-                "11": self.REBOOT_CAUSE_POWER_LOSS,
-                "22": self.REBOOT_CAUSE_NON_HARDWARE,
-                "33": self.REBOOT_CAUSE_HARDWARE_OTHER,
-                "44": self.REBOOT_CAUSE_NON_HARDWARE,
-                "55": self.REBOOT_CAUSE_NON_HARDWARE,
-                "66": self.REBOOT_CAUSE_WATCHDOG,
-                "77": self.REBOOT_CAUSE_NON_HARDWARE
-            }.get(status, self.REBOOT_CAUSE_HARDWARE_OTHER)
-
-            description = {
-                "00": "Unknown reason",
-                "11": "The last reset is Power on reset",
-                "22": "The last reset is soft-set CPU warm reset",
-                "33": "The last reset is soft-set CPU cold reset",
-                "44": "The last reset is CPU warm reset",
-                "55": "The last reset is CPU cold reset",
-                "66": "The last reset is watchdog reset",
-                "77": "The last reset is power cycle reset"
-            }.get(status, "Unknown reason")
-        else:
-            reboot_cause = self.REBOOT_CAUSE_WATCHDOG
-            description = 'Hardware Watchdog Reset'
-
-        return (reboot_cause, description)
-
+        
     def get_revision(self):
         return self._eeprom.revision_str()
-
+        
     @staticmethod
     def get_position_in_parent():
         return -1
-
+        
     @staticmethod
     def is_replaceable():
-        return True
+        return True  
 
     def set_system_led(self, device_name, color):
-        if self._api_helper.with_bmc():
-            if device_name == "DIAG_LED" or device_name == "SYS_LED":
-                color_dict = {
-                    self.STATUS_LED_COLOR_GREEN: 0x10,
-                    self.STATUS_LED_COLOR_AMBER: 0x20,
-                    self.STATUS_LED_COLOR_OFF: 0x30
-                }
-
-                if device_name == "SYS_LED":
-                    return self._api_helper.cpld_lpc_write(0xA162, color_dict.get(color, 0x30))
-                else:
-                    return self._api_helper.cpld_lpc_write(0xA163, color_dict.get(color, 0x30))
-            elif device_name == "FANTRAY1_LED":
-                return self._fan_list[0].set_status_led(color)
-            elif device_name == "FANTRAY2_LED":
-                return self._fan_list[1].set_status_led(color)
-            elif device_name == "FANTRAY3_LED":
-                return self._fan_list[2].set_status_led(color)
-            elif device_name == "PSU1_LED":
-                return self._psu_list[0].set_status_led(color)
-            elif device_name == "PSU2_LED":
-                return self._psu_list[1].set_status_led(color)
-            elif device_name == "PSU3_LED":
-                return self._psu_list[2].set_status_led(color)
-            elif device_name == "PSU4_LED":
-                return self._psu_list[3].set_status_led(color)
+        if device_name == "ALARM_LED" or device_name == "SYS_LED":
+            color_dict = {
+                self.STATUS_LED_COLOR_GREEN: 0x10,
+                self.STATUS_LED_COLOR_AMBER: 0x20,
+                self.STATUS_LED_COLOR_MIX_BLINK: 0x01,
+                self.STATUS_LED_COLOR_GREEN_BLINK: 0x11,
+                self.STATUS_LED_COLOR_AMBER_BLINK: 0x21,
+                self.STATUS_LED_COLOR_OFF: 0x30
+            }
+            val = color_dict.get(color, 0xf)
+            if val == 0xf: return False                
+            if device_name == "SYS_LED":
+                return self._api_helper.cpld_lpc_write(0xA162, val)
             else:
-                return self.STATUS_LED_COLOR_OFF
+                return self._api_helper.cpld_lpc_write(0xA163, val)
+        elif device_name == "PSU_Front_LED":
+            color_dict = {
+                self.STATUS_LED_COLOR_GREEN: 0x2,
+                self.STATUS_LED_COLOR_AMBER: 0x1,
+                self.STATUS_LED_COLOR_OFF: 0x3,
+                self.STATUS_LED_COLOR_AUTO: 0x8
+            }
+            val = color_dict.get(color, 0x0)
+            if val == 0x0: return False
+            return self._api_helper.cpld_lpc_write(0xA161, val)
+        elif device_name == "FAN_Front_LED":
+            color_dict = {
+                self.STATUS_LED_COLOR_GREEN: 0x2,
+                self.STATUS_LED_COLOR_AMBER: 0x1,
+                self.STATUS_LED_COLOR_OFF: 0x3,
+                self.STATUS_LED_COLOR_AUTO: 0x8
+            }
+            val = color_dict.get(color, 0x0)
+            if val == 0x0: return False
+            return self._api_helper.cpld_lpc_write(0xA165, val)
+        elif device_name == "FANTRAY1_LED":
+            return self._fan_list[0].set_status_led(color)
+        elif device_name == "FANTRAY2_LED":
+            return self._fan_list[1].set_status_led(color)
+        elif device_name == "FANTRAY3_LED":
+            return self._fan_list[2].set_status_led(color)
         else:
-            return PddfChassis.set_system_led(self, device_name, color)
+            raise NotImplementedError   
 
-    def get_system_led(self, device_name):
-        if self._api_helper.with_bmc():
-            if device_name == "DIAG_LED" or device_name == "SYS_LED":
-                if device_name == "SYS_LED":
-                    reg = 0xA162
-                else:
-                    reg = 0xA163
-
-                status, result = self._api_helper.cpld_lpc_read(reg)
-                if status == True:
-                    result = int(result, 16) & 0xf0
-                else:
-                    result = 0x30
-
-                status_led = {
-                    0x30: self.STATUS_LED_COLOR_OFF,
-                    0x10: self.STATUS_LED_COLOR_GREEN,
-                    0x20: self.STATUS_LED_COLOR_AMBER,
-                }
-
-                return status_led.get(result, self.STATUS_LED_COLOR_OFF)
-            elif device_name == "FANTRAY1_LED":
-                return self._fan_list[0].get_status_led()
-            elif device_name == "FANTRAY2_LED":
-                return self._fan_list[1].get_status_led()
-            elif device_name == "FANTRAY3_LED":
-                return self._fan_list[2].get_status_led()
-            elif device_name == "PSU1_LED":
-                return self._psu_list[0].get_status_led()
-            elif device_name == "PSU2_LED":
-                return self._psu_list[1].get_status_led()
-            elif device_name == "PSU3_LED":
-                return self._psu_list[2].get_status_led()
-            elif device_name == "PSU4_LED":
-                return self._psu_list[3].get_status_led()
+    def get_system_led(self, device_name):               
+        if device_name == "ALARM_LED" or device_name == "SYS_LED":
+            if device_name == "SYS_LED":
+                reg = 0xA162
             else:
-                return self.STATUS_LED_COLOR_OFF
-        else:
-            return PddfChassis.get_system_led(self, device_name)
+                reg = 0xA163
+                
+            status, result = self._api_helper.cpld_lpc_read(reg)
+            if status == True:
+                result = int(result, 16) & 0x33
+            else:
+                return self.STATUS_LED_COLOR_UNKNOWN
 
+            status_led = {
+                0x30: self.STATUS_LED_COLOR_OFF,
+                0x33: self.STATUS_LED_COLOR_OFF,
+                0x10: self.STATUS_LED_COLOR_GREEN,
+                0x20: self.STATUS_LED_COLOR_AMBER,
+                0x00: self.STATUS_LED_COLOR_MIX_BLINK,
+                0x01: self.STATUS_LED_COLOR_MIX_BLINK,
+                0x02: self.STATUS_LED_COLOR_MIX_BLINK,
+                0x03: self.STATUS_LED_COLOR_MIX_BLINK,
+                0x11: self.STATUS_LED_COLOR_GREEN_BLINK,
+                0x12: self.STATUS_LED_COLOR_GREEN_BLINK,
+                0x21: self.STATUS_LED_COLOR_AMBER_BLINK,
+                0x22: self.STATUS_LED_COLOR_AMBER_BLINK
+            }
+            
+            return status_led.get(result, self.STATUS_LED_COLOR_UNKNOWN)
+        if device_name == "PSU_Front_LED":
+            status, result = self._api_helper.cpld_lpc_read(0xA161)
+            if status == True:
+                result = int(result, 16) & 0x3
+            else:
+                return self.STATUS_LED_COLOR_UNKNOWN
+
+            status_led = {
+                0x0: self.STATUS_LED_COLOR_OFF,
+                0x3: self.STATUS_LED_COLOR_OFF,
+                0x2: self.STATUS_LED_COLOR_GREEN,
+                0x1: self.STATUS_LED_COLOR_AMBER,
+            }
+            return status_led.get(result)
+        if device_name == "FAN_Front_LED":
+            status, result = self._api_helper.cpld_lpc_read(0xA165)
+            if status == True:
+                result = int(result, 16) & 0x3
+            else:
+                return self.STATUS_LED_COLOR_UNKNOWN
+
+            status_led = {
+                0x0: self.STATUS_LED_COLOR_OFF,
+                0x3: self.STATUS_LED_COLOR_OFF,
+                0x2: self.STATUS_LED_COLOR_GREEN,
+                0x1: self.STATUS_LED_COLOR_AMBER,
+            }
+            return status_led.get(result)
+        elif device_name == "FANTRAY1_LED":
+            return self._fan_list[0].get_status_led()
+        elif device_name == "FANTRAY2_LED":
+            return self._fan_list[1].get_status_led()
+        elif device_name == "FANTRAY3_LED":
+            return self._fan_list[2].get_status_led()
+        elif device_name == "PSU1_LED":
+            return self._psu_list[0].get_status_led()
+        elif device_name == "PSU2_LED":
+            return self._psu_list[1].get_status_led()
+        elif device_name == "PSU3_LED":
+            return self._psu_list[2].get_status_led()
+        elif device_name == "PSU4_LED":
+            return self._psu_list[3].get_status_led()
+        else:
+            raise NotImplementedError 
+            
     def set_status_led(self, color):
-        return self.set_system_led("DIAG_LED", color)
-
+        return self.set_system_led("ALARM_LED", color)
+        
     def get_status_led(self):
         """
         Gets the state of the alarm status LED
@@ -238,7 +246,7 @@ class Chassis(PddfChassis):
             STATUS_LED_COLOR_RED = "red"
             STATUS_LED_COLOR_OFF = "off"
         """
-        return self.get_system_led("DIAG_LED")
+        return self.get_system_led("ALARM_LED")
 
     def get_port_or_cage_type(self, index):
         if index in range(1, 64+1):
@@ -255,17 +263,15 @@ class Chassis(PddfChassis):
         """
         Returns a nested dictionary containing all devices which have
         experienced a change at chassis level
-
         Args:
             timeout: Timeout in milliseconds (optional). If timeout == 0,
                 this method will block until a change is detected.
-
         Returns:
             (bool, dict):
                 - True if call successful, False if not;
                 - A nested dictionary where key is a device type,
-                  value is a dictionary with key:value pairs in the
-                  format of {'device_id':'device_event'},
+                  value is a dictionary with key:value pairs in the format of
+                  {'device_id':'device_event'},
                   where device_id is the device ID for this device and
                         device_event,
                              status='1' represents device inserted,

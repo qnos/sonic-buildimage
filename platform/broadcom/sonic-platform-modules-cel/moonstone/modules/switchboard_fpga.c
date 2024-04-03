@@ -8,6 +8,7 @@
 #include <linux/acpi.h>
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include "pca954x.h"
 
@@ -202,18 +203,18 @@ int cpld_i2c_read_byte(uint8_t devaddr, uint8_t regoffset, uint8_t *value)
 
 	if (err >= 0)
 		return 0;
-
+		
 	return err;
-}
+}	
 
 int cls_fpgapci_read(uint32_t fpga_read_addr)
 {
 	uint32_t data;
-
+	
 	mutex_lock(&fpga_data->fpga_lock);
 	data = ioread32((void __iomem *)(fpga_dev.data_base_addr + fpga_read_addr));
 	mutex_unlock(&fpga_data->fpga_lock);
-
+	
 	return data;
 }
 EXPORT_SYMBOL(cls_fpgapci_read);
@@ -223,9 +224,28 @@ int cls_fpgapci_write(uint32_t fpga_write_addr, uint32_t value)
 	mutex_lock(&fpga_data->fpga_lock);
 	iowrite32(value, fpga_dev.data_base_addr + fpga_write_addr);
 	mutex_unlock(&fpga_data->fpga_lock);
-	return 0;
+	return 0;	
 }
 EXPORT_SYMBOL(cls_fpgapci_write);
+
+static struct mutex sysfs_osfp_mutex;
+
+int sysfs_osfp_mutex_lock(void)
+{
+    mutex_lock(&sysfs_osfp_mutex);
+    return 0;
+}
+
+int sysfs_osfp_mutex_unlock(void)
+{
+    mutex_unlock(&sysfs_osfp_mutex);
+    return 0;
+}
+
+int (*ptr_osfp_mutex_lock)(void);
+int (*ptr_osfp_mutex_unlock)(void);
+EXPORT_SYMBOL(ptr_osfp_mutex_lock);
+EXPORT_SYMBOL(ptr_osfp_mutex_unlock);
 
 static void moonstone_dev_release(struct device *dev)
 {
@@ -306,9 +326,9 @@ static ssize_t getreg_store(struct device *dev,
 	if (addr == 0 && buf == last)
 		return -EINVAL;
 
-	mutex_lock(&fpga_data->fpga_lock);
+	mutex_lock(&fpga_data->fpga_lock);	
 	fpga_data->fpga_read_addr = fpga_dev.data_base_addr + addr;
-	mutex_unlock(&fpga_data->fpga_lock);
+	mutex_unlock(&fpga_data->fpga_lock);	
 	return count;
 }
 
@@ -334,9 +354,9 @@ static ssize_t scratch_store(struct device *dev,
 	if (data == 0 && buf == last)
 		return -EINVAL;
 
-	mutex_lock(&fpga_data->fpga_lock);
+	mutex_lock(&fpga_data->fpga_lock);	
 	iowrite32(data, fpga_dev.data_base_addr + FPGA_SCRATCH);
-	mutex_unlock(&fpga_data->fpga_lock);
+	mutex_unlock(&fpga_data->fpga_lock);	
 	return count;
 }
 
@@ -470,7 +490,7 @@ static ssize_t cpld1_scratch_show(struct device *dev, struct device_attribute *a
 	uint8_t data;
 
 	cpld_i2c_read_byte(CPLD1_SLAVE_ADDR, 0x1, &data);
-
+	
 	return sprintf(buf, "0x%.2x\n", data);
 }
 
@@ -556,7 +576,7 @@ static ssize_t cpld2_getreg_show(struct device *dev, struct device_attribute *at
 	uint8_t data;
 
 	cpld_i2c_read_byte(CPLD2_SLAVE_ADDR, fpga_data->cpld2_read_addr, &data);
-
+		
 	return sprintf(buf, "0x%2.2x\n", (unsigned int)data);
 }
 
@@ -583,7 +603,7 @@ static ssize_t cpld2_scratch_show(struct device *dev, struct device_attribute *a
 	uint8_t data;
 
 	cpld_i2c_read_byte(CPLD2_SLAVE_ADDR, 0x1, &data);
-
+	
 	return sprintf(buf, "0x%.2x\n", data);
 }
 
@@ -672,25 +692,37 @@ static ssize_t osfp_int_show(struct device *dev, struct device_attribute *attr, 
 	int err;
 
 	mutex_lock(&fpga_data->fpga_lock);
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
 
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
 		cpld_addr = CPLD2_SLAVE_ADDR;
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
-
+	
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	err = cpld_i2c_read_byte(cpld_addr, PORT_STAT_SW_CPLD_REG_ADDR, &data);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
 	return sprintf(buf, "%d\n", (data >> INT_L_BIT_POS) & 1U);
@@ -707,33 +739,45 @@ static ssize_t osfp_modprs_show(struct device *dev, struct device_attribute *att
 	int err;
 
 	mutex_lock(&fpga_data->fpga_lock);
-
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
+	
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
 		cpld_addr = CPLD2_SLAVE_ADDR;
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
-
+	
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	err = cpld_i2c_read_byte(cpld_addr, PORT_STAT_SW_CPLD_REG_ADDR, &data);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
-	return sprintf(buf, "%d\n", (data >> PRSNT_BIT_POS) & 1U);
+	return sprintf(buf, "%d\n", (data >> PRSNT_BIT_POS) & 1U);	
 }
 struct device_attribute dev_attr_osfp_modprs = __ATTR(MODPRS_L, 0444, osfp_modprs_show, NULL);
 
 static ssize_t osfp_reset_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
+{		
 	u8 data;
 	struct sff_device_data *dev_data = dev_get_drvdata(dev);
 	unsigned int portid = dev_data->portid;
@@ -742,25 +786,37 @@ static ssize_t osfp_reset_show(struct device *dev, struct device_attribute *attr
 	int err;
 
 	mutex_lock(&fpga_data->fpga_lock);
-
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
+	
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
 		cpld_addr = CPLD2_SLAVE_ADDR;
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
-
+	
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	err = cpld_i2c_read_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, &data);
 	if (err < 0){
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
 	return sprintf(buf, "%d\n", (data >> RST_L_BIT_POS) & 1U);
@@ -776,17 +832,18 @@ static ssize_t osfp_reset_store(struct device *dev, struct device_attribute *att
 	int cpld_addr = CPLD1_SLAVE_ADDR;
 	int err;
 
-
-	mutex_lock(&fpga_data->fpga_lock);
-
 	status = kstrtol(buf, 0, &value);
 
 	if (status != 0)
 		return status;
 
-
 	if ((value != 0) && (value != 1))
 		return -ERANGE;
+
+	mutex_lock(&fpga_data->fpga_lock);
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
 
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
@@ -796,12 +853,18 @@ static ssize_t osfp_reset_store(struct device *dev, struct device_attribute *att
 
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
-
+	
 	err = cpld_i2c_read_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, &data);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return data;
 	}
@@ -813,12 +876,18 @@ static ssize_t osfp_reset_store(struct device *dev, struct device_attribute *att
 
 	err = cpld_i2c_write_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, data);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}		
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	status = size;
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
 	return status;
@@ -836,6 +905,9 @@ static ssize_t osfp_lpmod_show(struct device *dev, struct device_attribute *attr
 
 
 	mutex_lock(&fpga_data->fpga_lock);
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
 
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
@@ -845,16 +917,25 @@ static ssize_t osfp_lpmod_show(struct device *dev, struct device_attribute *attr
 
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	err = cpld_i2c_read_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, &data);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return data;
-	}
+	}	
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
 	return sprintf(buf, "%d\n", (data >> LPMOD_BIT_POS) & 1U);
@@ -869,17 +950,18 @@ static ssize_t osfp_lpmod_store(struct device *dev, struct device_attribute *att
 	int cpld_addr = CPLD1_SLAVE_ADDR;
 	int err;
 
-
-	mutex_lock(&fpga_data->fpga_lock);
-
 	status = kstrtol(buf, 0, &value);
 
 	if (status != 0)
 		return status;
 
-
 	if ((value != 0) && (value != 1))
 		return -ERANGE;
+
+	mutex_lock(&fpga_data->fpga_lock);
+	if (ptr_osfp_mutex_lock){
+		ptr_osfp_mutex_lock();
+	}
 
 	value = portid;
 	if (portid > PORT_AMNT_PER_SW_CPLD) {
@@ -889,12 +971,18 @@ static ssize_t osfp_lpmod_store(struct device *dev, struct device_attribute *att
 
 	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
 	}
 
 	err = cpld_i2c_read_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, &data);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return data;
 	}
@@ -906,12 +994,18 @@ static ssize_t osfp_lpmod_store(struct device *dev, struct device_attribute *att
 
 	err = cpld_i2c_write_byte(cpld_addr, PORT_CTRL_SW_CPLD_REG_ADDR, data);
 	if (err < 0) {
+		if (ptr_osfp_mutex_unlock){
+			ptr_osfp_mutex_unlock();
+		}
 		mutex_unlock(&fpga_data->fpga_lock);
 		return err;
-	}
-
+	}	
+	
 	status = size;
 
+	if (ptr_osfp_mutex_unlock){
+		ptr_osfp_mutex_unlock();
+	}
 	mutex_unlock(&fpga_data->fpga_lock);
 
 	return status;
@@ -972,7 +1066,7 @@ static ssize_t sfp_absmod_show(struct device *dev, struct device_attribute *attr
 	unsigned int portid = dev_data->portid;
 	unsigned int REGISTER = SFP_PORT_CTRL_STAT_BASE + (portid * 0x04);
 
-
+	
 	mutex_lock(&fpga_data->fpga_lock);
 	data = ioread32(fpga_dev.data_base_addr + REGISTER);
 	mutex_unlock(&fpga_data->fpga_lock);
@@ -987,7 +1081,7 @@ static ssize_t sfp_txdisable_show(struct device *dev, struct device_attribute *a
 	unsigned int portid = dev_data->portid;
 	unsigned int REGISTER = SFP_PORT_CTRL_STAT_BASE + (portid * 0x04);
 
-
+	
 	mutex_lock(&fpga_data->fpga_lock);
 	data = ioread32(fpga_dev.data_base_addr + REGISTER);
 	mutex_unlock(&fpga_data->fpga_lock);
@@ -1001,7 +1095,7 @@ static ssize_t sfp_txdisable_store(struct device *dev, struct device_attribute *
 	struct sff_device_data *dev_data = dev_get_drvdata(dev);
 	unsigned int portid = dev_data->portid;
 	unsigned int REGISTER = SFP_PORT_CTRL_STAT_BASE + (portid * 0x04);
-
+	
 
 	status = kstrtol(buf, 0, &value);
 
@@ -1010,7 +1104,7 @@ static ssize_t sfp_txdisable_store(struct device *dev, struct device_attribute *
 
 	if ((value != 0) && (value != 1))
 		return -ERANGE;
-
+	
 	mutex_lock(&fpga_data->fpga_lock);
 
 	data = ioread32(fpga_dev.data_base_addr + REGISTER);
@@ -1018,9 +1112,9 @@ static ssize_t sfp_txdisable_store(struct device *dev, struct device_attribute *
 		data |= ((u32)0x1 << SFP_TXDIS_BIT_POS);
 	else
 		data &= ~((u32)0x1 << SFP_TXDIS_BIT_POS);
-
+	
 	iowrite32(data, fpga_dev.data_base_addr + REGISTER);
-
+	
 	status = size;
 
 	mutex_unlock(&fpga_data->fpga_lock);
@@ -1059,6 +1153,9 @@ static struct device *sff_init(enum PORT_TYPE type, int portid)
 	}
 	/* The OSFP port ID start from 1 */
 	new_data->portid = portid;
+	mutex_init(&sysfs_osfp_mutex);
+	ptr_osfp_mutex_lock = sysfs_osfp_mutex_lock;
+	ptr_osfp_mutex_unlock = sysfs_osfp_mutex_unlock;
 
 	if (type == OSFP) {
 

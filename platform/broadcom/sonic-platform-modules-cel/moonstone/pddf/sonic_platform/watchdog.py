@@ -11,14 +11,15 @@
 import os
 
 try:
-    from sonic_platform_base.watchdog_base import WatchdogBase
+    from sonic_platform_base.watchdog_base import WatchdogBase 
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
 
-class CpldWatchdog(WatchdogBase):
+class Watchdog(WatchdogBase):
 
     def __init__(self):
-        pass
+        self.device = "/dev/watchdog1"
+        self.sysfs = "/sys/devices/platform/cpld_wdt/watchdog/watchdog1"
 
     def is_armed(self):
         """
@@ -28,12 +29,12 @@ class CpldWatchdog(WatchdogBase):
             A boolean, True if watchdog is armed, False if not
         """
 
-        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/state", "r") as fd:
+        with open("%s/state" % self.sysfs, "r") as fd:
             txt = fd.read()
         state = txt.strip()
-        self.is_armed = False if state == "0x0" else True
+        self.armed = True if state == "active" else False
 
-        return self.is_armed
+        return self.armed
 
     def disarm(self):
         """
@@ -42,12 +43,9 @@ class CpldWatchdog(WatchdogBase):
             A boolean, True if watchdog is disarmed successfully, False if not
         """
 
-        if self.watchdog is not None:
-            self.watchdog.write('v')
-            self.watchdog.close()
-            self.watchdog = None
+        os.system("echo V > %s" % self.device)
 
-        if self.is_armed:
+        if self.is_armed():
             return False
         else:
             return True
@@ -65,20 +63,20 @@ class CpldWatchdog(WatchdogBase):
             was armed with. On failure returns -1.
         """
 
-        if self.watchdog is None:
-            self.watchdog = os.open("/dev/watchdog1", os.O_RDWR)
-
-        with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/settimeout", "w") as fd:
+        with open("%s/settimeout" % self.sysfs, "w") as fd:
             fd.write("%d" % seconds)
-        self.watchdog.write('k')
+    
+        with open("%s/settimeout" % self.sysfs, "r") as fd:
+            timeout = int(fd.read().strip())
 
-        if self.is_armed():
-            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/settimeout", "r") as fd:
-                timeout = int(fd.read().strip())
+        if self.is_armed() == False:
+            os.system("echo k > %s" % self.device)
+
+        if self.is_armed() == False:
+            return -1
         else:
-            timeout = -1
-        return timeout
-
+            return timeout
+  
     def get_remaining_time(self):
         """
         If the watchdog is armed, retrieve the number of seconds remaining on
@@ -89,23 +87,8 @@ class CpldWatchdog(WatchdogBase):
         """
 
         if self.is_armed():
-            with open("/sys/devices/platform/cpld_wdt/watchdog/watchdog1/timeleft", "r") as fd:
+            with open("%s/timeleft" % self.sysfs, "r") as fd:
                 timeleft = int(fd.read().strip())
             return timeleft
         else:
             return -1
-
-    def __del__(self):
-        """
-        Close watchdog
-        """
-
-        self.disarm()
-
-class Watchdog(CpldWatchdog):
-    """PDDF Platform-Specific Watchdog Class"""
-
-    def __init__(self):
-        CpldWatchdog.__init__(self)
-
-    # Provide the functions/variables below for which implementation is to be overwritten

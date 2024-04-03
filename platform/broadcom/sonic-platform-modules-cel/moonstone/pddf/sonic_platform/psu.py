@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import time
+
 #############################################################################
 # Celestica
 #
@@ -18,68 +20,73 @@ except ImportError as e:
 class Psu(PddfPsu):
     """PDDF Platform-Specific PSU class"""
 
+    PSU_IPMI_FRU_ID_MAP = {
+        1: 215,
+        2: 26,
+        3: 128,
+        4: 154
+    }
+
     def __init__(self, index, pddf_data=None, pddf_plugin_data=None):
         PddfPsu.__init__(self, index, pddf_data, pddf_plugin_data)
         self._api_helper = APIHelper()
-
+        
     # Provide the functions/variables below for which implementation is to be overwritten
+
+    def read(self, bus, i2c_slave_addr, addr, num_bytes):
+        if num_bytes == 0:
+            return []
+
+        data = ""
+        for i in range(0, num_bytes):
+            cmd = 'i2cget -f -y %d 0x%x 0x%x' % (bus, i2c_slave_addr, addr + i)
+            status, output = self._api_helper.run_command(cmd)
+            if status == False:
+                return []
+            data += output
+            if i < (num_bytes - 1): 
+                data += " "
+        return data 
 
     def get_presence(self):
 
         idx = self.psu_index - 1
-        status, result = self._api_helper.cpld_lpc_read(0xA160)
-
-        if (int(result, 16) & (1 << (idx + 4)) == (1 << (idx + 4))) and status == True:
+        status, result = self._api_helper.cpld_lpc_read(0xA15E)
+        
+        if (int(result, 16) & (1 << idx) == 0) and status == True:
             return True
         else:
             return False
 
     def get_powergood_status(self):
 
-        idx = self.psu_index - 1
+        idx = self.psu_index - 1        
         status, result = self._api_helper.cpld_lpc_read(0xA160)
-
-        if (int(result, 16) & (1 << idx) == (1 << idx)) and status == True:
+        mask = (1 << idx + 4) | (1 << idx)
+        
+        if (int(result, 16) & mask == mask) and status == True:
             return True
         else:
             return False
 
     def get_type(self):
-        """
-        Gets the type of the PSU
+        return 'AC'
 
-        Returns:
-            A string, the type of PSU (AC/DC)
-        """
-        # This platform supports AC PSU
-        return "AC"
+    def get_capacity(self):
+        return 2000
 
-    def get_revision(self):
-        return "N/A"
+    def get_voltage_low_threshold(self):
+        return 10
+
+    def get_voltage_high_threshold(self):
+        return 14
 
     def set_status_led(self, color):
-        if self._api_helper.with_bmc():
-            bmc_color_dict = {
-                self.STATUS_LED_COLOR_GREEN: 0x2,
-                self.STATUS_LED_COLOR_AMBER: 0x1,
-                self.STATUS_LED_COLOR_OFF: 0x3
-            }
-
-            reg = [0xA161, 0xA161, 0xA161, 0xA161, 0xA161, 0xA161]
-            idx = self.psu_index - 1
-
-            return self._api_helper.cpld_lpc_write(reg[idx], bmc_color_dict.get(color, 0x3))
-        else:
-            color_dict = {
-                self.STATUS_LED_COLOR_GREEN: "green",
-                self.STATUS_LED_COLOR_AMBER: "amber",
-                self.STATUS_LED_COLOR_OFF: "off"
-            }
-            return PddfPsu.set_status_led(self, color_dict.get(color, "off"))
+        return False
 
     def get_status_led(self):
         """
-        Gets the state of the fan status LED
+        Gets the state of the psu status LED
         Returns:
             A string, one of the predefined STATUS_LED_COLOR_* strings above
 
@@ -89,31 +96,41 @@ class Psu(PddfPsu):
             STATUS_LED_COLOR_RED = "red"
             STATUS_LED_COLOR_OFF = "off"
         """
-        if self._api_helper.with_bmc():
+        index = str(self.psu_index-1)
+        psu_led_device = "PSU{}".format(self.psu_index) + "_LED"
 
-            reg = [0xA161, 0xA161, 0xA161, 0xA161, 0xA161, 0xA161]
-            idx = self.psu_index - 1
-
-            status, result = self._api_helper.cpld_lpc_read(reg[idx])
-            if status == True:
-                result = int(result, 16) & 0x3
+        if psu_led_device not in self.pddf_obj.data.keys():
+            if self.get_presence():
+                if self.get_powergood_status():
+                    return self.STATUS_LED_COLOR_GREEN
+                else:
+                    return self.STATUS_LED_COLOR_AMBER
             else:
-                result = 0
+                return self.STATUS_LED_COLOR_OFF
 
-            status_led = {
-                0: self.STATUS_LED_COLOR_OFF,
-                3: self.STATUS_LED_COLOR_OFF,
-                1: self.STATUS_LED_COLOR_GREEN,
-                2: self.STATUS_LED_COLOR_AMBER,
-            }.get(result, self.STATUS_LED_COLOR_OFF)
+        device_name = self.pddf_obj.data[psu_led_device]['dev_info']['device_name']
+        self.pddf_obj.create_attr('device_name', device_name,  self.pddf_obj.get_led_path())
+        self.pddf_obj.create_attr('index', index, self.pddf_obj.get_led_path())
+        self.pddf_obj.create_attr('dev_ops', 'get_status',  self.pddf_obj.get_led_path())
+        color = self.pddf_obj.get_led_color()
+        return (color)      
 
+    def get_revision(self):
+        """
+        Retrieves the revision of the device
+        Returns:
+            string: revision of device
+        """
+        if not self.get_presence():
+            return 'N/A'
+
+        if self._api_helper.with_bmc():
+            cmd = "ipmitool fru list {} | grep 'Product Version'".format(self.PSU_IPMI_FRU_ID_MAP.get(self.psu_index))
+            status, output = self._api_helper.run_command(cmd)
+            if status == True:
+                rev = output.split()[-1]
+                return rev
         else:
-            result =  PddfPsu.get_status_led(self)
-
-            status_led = {
-                "off": self.STATUS_LED_COLOR_OFF,
-                "green": self.STATUS_LED_COLOR_GREEN,
-                "amber": self.STATUS_LED_COLOR_AMBER,
-            }.get(result, self.STATUS_LED_COLOR_OFF)
-
-        return status_led
+            output = self.read(84 + self.psu_index - 1, 0x50, 0x40, 3)
+            return bytes.fromhex(output.replace('0x', '').replace(" ", "")).decode("utf-8")
+        return 'N/A'

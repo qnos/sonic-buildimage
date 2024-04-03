@@ -175,26 +175,26 @@ static ssize_t setreg_store(struct device *dev, struct device_attribute *devattr
     addr = (uint16_t)strtoul(tok,&last,16);
     if(addr == 0 && tok == last){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);
+        kfree(pclone);		
         return -EINVAL;
     }
 
     tok = strsep((char**)&pclone, " ");
     if(tok == NULL){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);
+        kfree(pclone);		
         return -EINVAL;
     }
     value = (uint8_t)strtoul(tok,&last,16);
     if(value == 0 && tok == last){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);
+        kfree(pclone);		
         return -EINVAL;
     }
 
     outb(value,addr);
     mutex_unlock(&cpld_data->cpld_lock);
-    kfree(pclone);
+    kfree(pclone);	
     return count;
 }
 static DEVICE_ATTR_WO(setreg);
@@ -351,7 +351,7 @@ static ssize_t sys_led_raw_store(struct device *dev, struct device_attribute *de
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, SYS_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(sys_led_raw);
@@ -376,7 +376,7 @@ static ssize_t psu_led_store(struct device *dev, struct device_attribute *devatt
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, PSU_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(psu_led);
@@ -401,7 +401,7 @@ static ssize_t alarm_led_store(struct device *dev, struct device_attribute *deva
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, ALARM_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(alarm_led);
@@ -426,7 +426,7 @@ static ssize_t fan_stat_led_store(struct device *dev, struct device_attribute *d
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, FAN_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(fan_stat_led);
@@ -451,7 +451,7 @@ static ssize_t fan1_led_store(struct device *dev, struct device_attribute *devat
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, FAN1_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(fan1_led);
@@ -476,7 +476,7 @@ static ssize_t fan2_led_store(struct device *dev, struct device_attribute *devat
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, FAN2_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(fan2_led);
@@ -501,7 +501,7 @@ static ssize_t fan3_led_store(struct device *dev, struct device_attribute *devat
     mutex_lock(&cpld_data->cpld_lock);
     outb(data, FAN3_LED_ADDR);
     mutex_unlock(&cpld_data->cpld_lock);
-
+    
     return count;
 }
 static DEVICE_ATTR_RW(fan3_led);
