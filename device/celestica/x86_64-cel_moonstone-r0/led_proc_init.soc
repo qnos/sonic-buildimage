@@ -1,5 +1,6 @@
 led auto off
 led stop
 led load /usr/share/sonic/platform/custom_led.bin
+dsh -c 'seti iproc 0x0201a000 0x1000'
 led auto on
 led start

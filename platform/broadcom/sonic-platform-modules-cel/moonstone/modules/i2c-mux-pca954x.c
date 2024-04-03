@@ -502,7 +502,7 @@ static int pca954x_probe(struct i2c_client *client,
 			} else
 				/* discard unconfigured channels */
 				break;
-		}
+		}	
 		ret = i2c_mux_add_adapter(muxc, force, num, class);
 		if (ret)
 			goto fail_cleanup;
@@ -564,7 +564,7 @@ static SIMPLE_DEV_PM_OPS(pca954x_pm, NULL, pca954x_resume);
 
 static struct i2c_driver pca954x_driver = {
 	.driver		= {
-		.name	= "cls-pca954x",
+		.name	= "pca954x",
 		.pm	= &pca954x_pm,
 		.of_match_table = pca954x_of_match,
 	},

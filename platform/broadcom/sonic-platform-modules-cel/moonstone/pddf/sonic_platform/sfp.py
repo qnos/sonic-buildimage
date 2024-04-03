@@ -34,28 +34,14 @@ class Sfp(PddfSfp):
         if re.search('^SFP', self.pddf_obj.get_device_type(device)):
             return False
         else:
-            return PddfSfp.get_reset_status(self)
-
-    def get_tx_fault(self):
-        device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
-            return PddfSfp.get_tx_fault(self)
-        else:
-            return False
-
-    def get_tx_disable(self):
-        device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
-            return PddfSfp.get_tx_disable(self)
-        else:
-            return False
+            return super().get_reset_status()
 
     def get_lpmode(self):
         device = 'PORT{}'.format(self.port_index)
         if re.search('^SFP', self.pddf_obj.get_device_type(device)):
-            return False
+            return super().get_tx_disable()
         else:
-            return PddfSfp.get_lpmode(self)
+            return super().get_lpmode()
 
     def reset(self):
         device = 'PORT{}'.format(self.port_index)
@@ -89,19 +75,12 @@ class Sfp(PddfSfp):
 
             return status
 
-    def tx_disable(self, tx_disable):
-        device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
-            return PddfSfp.tx_disable(self, tx_disable)
-        else:
-            return False
-
     def set_lpmode(self, lpmode):
         device = 'PORT{}'.format(self.port_index)
         if re.search('^SFP', self.pddf_obj.get_device_type(device)):
-            return False
+            return super().tx_disable(lpmode)
         else:
-            return PddfSfp.set_lpmode(self, lpmode)
+            return super().set_lpmode(lpmode)
 
     # Provide the functions/variables below for which implementation is to be overwritten
     # Add reties to work around FPGAPCI 0050/eeprom: offset 0x0: sometimes read failed

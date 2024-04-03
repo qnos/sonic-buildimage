@@ -11,7 +11,7 @@ class APIHelper():
 
     def __init__(self):
         pass
-
+        
     def run_command(self, cmd):
         status = True
         result = ""
@@ -24,11 +24,11 @@ class APIHelper():
         except Exception:
             status = False
         return status, result
-
+        
     def get_register_value(self, getreg_path, register):
         cmd = "echo {1} > {0}; cat {0}".format(getreg_path, register)
         return self.run_command(cmd)
-
+        
     def set_register_value(self, setreg_path, register, value):
         cmd = "echo {1} {2} > {0}".format(setreg_path, register, value)
         status, result = self.run_command(cmd)
@@ -58,7 +58,7 @@ class APIHelper():
         except IOError:
             pass
         return None
-
+        
     def ipmi_fru(self, id=0, key=None):
         status = True
         result = ""
@@ -83,3 +83,25 @@ class APIHelper():
         if presence == None:
             print("Failed to get BMC card presence status")
         return True if presence == "0" else False
+
+    def fsc_enable(self, enable=True):
+        if self.with_bmc():
+            if enable:
+                status, result = self.run_command('ipmitool raw 0x2e 0x04 0xcf 0xc2 0x00 1 0 0')
+            else:
+                status, result = self.run_command('ipmitool raw 0x2e 0x04 0xcf 0xc2 0x00 1 0 1')
+            return status
+        else:
+            return False
+
+    def fsc_enabled(self):
+        if self.with_bmc():
+            status, result = self.run_command('ipmitool raw 0x2e 0x04 0xcf 0xc2 0x00 0x00 0')
+            if status == True:
+                data_list = result.split()
+                if len(data_list) == 4:
+                    if int(data_list[3]) == 0:
+                        return True
+        else:
+            pass
+        return False

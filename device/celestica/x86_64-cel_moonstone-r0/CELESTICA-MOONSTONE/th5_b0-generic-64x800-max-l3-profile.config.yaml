@@ -1246,8 +1246,4 @@ device:
             :
                 MEDIUM_TYPE_AUTO: 0
                 MEDIUM_TYPE: PC_PHY_MEDIUM_BACKPLANE
-                FORCE_OS_CDR_AUTO: 0
-                FORCE_OS_CDR: 1
-                LP_DFE_AUTO: 0
-                LP_DFE: 1
 ...

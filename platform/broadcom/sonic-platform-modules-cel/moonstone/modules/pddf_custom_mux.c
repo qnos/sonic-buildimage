@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Broadcom.
+ * Copyright 2019 Broadcom. 
  * The term “Broadcom” refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ struct i2c_board_info *i2c_get_mux_board_info(MUX_DATA* mdata, NEW_DEV_ATTR *dev
 	static struct pca954x_platform_data mux_platform_data;
 	int num_modes, i;
 
-	if (strstr(device_data->dev_type, "pca9548"))
+	if (strstr(device_data->dev_type, "pca9548")) 
 		num_modes = 8;
 	else if (strstr(device_data->dev_type, "pca9546"))
 		num_modes = 6;
@@ -73,7 +73,7 @@ struct i2c_board_info *i2c_get_mux_board_info(MUX_DATA* mdata, NEW_DEV_ATTR *dev
 		printk(KERN_ERR "%s: Unknown type of mux device\n", __FUNCTION__);
 		return NULL;
 	}
-
+	
 	for(i = 0; i < num_modes; i++) {
 		platform_modes[i] = (struct pca954x_platform_mode) {
 			.adap_id = (mdata->virt_bus + i),
@@ -85,7 +85,7 @@ struct i2c_board_info *i2c_get_mux_board_info(MUX_DATA* mdata, NEW_DEV_ATTR *dev
 		.modes = platform_modes,
 		.num_modes = num_modes,
 	};
-
+	
 	board_info = (struct i2c_board_info) {
 		.platform_data = &mux_platform_data,
 	};
@@ -111,10 +111,8 @@ static ssize_t do_device_operation(struct device *dev, struct device_attribute *
 		/* Supported types are pca_9540, pca_9542, pca_9543, pca_9544, pca_9545, pca_9546, pca_9547, pca_9548,
 		 * pca_9846, pca_9847, pca_9848, pca_9849
 		 */
-		if ( (strncmp(device_ptr->dev_type, "cls-pca954", strlen("cls-pca954")) == 0) ||
-				(strncmp(device_ptr->dev_type, "cls-pca984", strlen("cls-pca984")) == 0) ||
-				(strncmp(device_ptr->dev_type, "pca954", strlen("pca954")) == 0) ||
-				(strncmp(device_ptr->dev_type, "pca984", strlen("pca984")) == 0))
+		if ( (strncmp(device_ptr->dev_type, "pca954", 6) == 0) ||
+				(strncmp(device_ptr->dev_type, "pca984", 6) == 0) )
 		{
 			adapter = i2c_get_adapter(device_ptr->parent_bus);
 			board_info = i2c_get_mux_board_info(mux_ptr, device_ptr);
@@ -179,14 +177,14 @@ int __init mux_data_init(void)
 	pddf_dbg(MUX, "MUX_DATA MODULE.. init\n");
 
 	device_kobj = get_device_i2c_kobj();
-	if(!device_kobj)
+	if(!device_kobj) 
 		return -ENOMEM;
 
 	mux_kobj = kobject_create_and_add("mux", device_kobj);
-	if(!mux_kobj)
+	if(!mux_kobj) 
 		return -ENOMEM;
-
-
+	
+	
 	ret = sysfs_create_group(mux_kobj, &pddf_clients_data_group);
 	if (ret)
     {

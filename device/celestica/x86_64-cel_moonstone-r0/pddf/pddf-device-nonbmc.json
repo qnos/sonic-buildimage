@@ -5,13 +5,23 @@
         "num_fantrays":3,
         "num_fans_pertray":2,
         "num_ports":66,
-        "num_temps":15,
+        "num_temps":6,
         "pddf_dev_types":
         {
-            "description":"moonstone pddf platform with BMC, ver v0.0",
+            "description":"moonstone pddf platform without BMC, ver v1.1",
             "CPLD":
             [
                 "i2c_cpld"
+            ],
+            "PSU":
+            [
+                "psu_pmbus"
+            ],
+            "FAN":
+            [
+                "fan_ctrl",
+                "fan_eeprom",
+                "fan_cpld"
             ],
             "PORT_MODULE":
             [
@@ -22,23 +32,31 @@
         [
             "i2c_dev",
             "at24",
-            "optoe"
+            "optoe",
+            "ucd9000",
+            "icp10100",
+            "lm75",
+            "i2c_mux_pca954x"
         ],
         "pddf_kos":
         [
+            "switchboard_fpga",
+            "baseboard_cpld",
             "pddf_client_module",
-            "pddf_mux_module",
+            "pddf_custom_mux",
+            "pddf_psu_module",
+            "pddf_fan_module",
             "pddf_fpgapci_driver",
             "pddf_cpld_module",
             "pddf_cpld_driver",
-            "pddf_led_module",
             "pddf_custom_xcvr",
-            "pddf_xcvr_driver_module"
+            "pddf_xcvr_driver_module",
+            "pddf_custom_psu_driver_module"
         ],
         "custom_kos":
         [
-            "baseboard_cpld",
-            "pddf_xcvr_patch"
+            "pddf_xcvr_patch",
+            "pddf_custom_wdt"
         ]
     },
     "SYSTEM":
@@ -48,24 +66,14 @@
         {
             "CONTROLLERS":
             [
-                { "dev_name":"i2c-0", "dev":"SMBUS0" },
                 { "dev_name":"i2c-2", "dev":"SMBUS2" },
                 { "dev_name":"i2c-3", "dev":"SMBUS3" },
                 { "dev_name":"i2c-4", "dev":"SMBUS4" },
                 { "dev_name":"i2c-5", "dev":"SMBUS5" },
-                { "dev_name":"i2c-6", "dev":"SMBUS6" }
-            ]
-        }
-    },
-    "SMBUS0":
-    {
-        "dev_info": {"device_type": "SMBUS", "device_name": "SMBUS0", "device_parent": "SYSTEM"},
-        "i2c":
-        {
-            "topo_info": {"dev_addr": "0x0"},
-            "DEVICES":
-            [
-                {"dev": "EEPROM1"}
+                { "dev_name":"i2c-6", "dev":"SMBUS6" },
+                { "dev_name":"i2c-101", "dev":"SMBUS101" },
+                { "dev_name":"i2c-102", "dev":"SMBUS102" },
+                { "dev_name":"i2c-105", "dev":"SMBUS105" }
             ]
         }
     },
@@ -136,14 +144,52 @@
             ]
         }
     },
-    "EEPROM1":
+    "SMBUS101":
     {
-        "dev_info": {"device_type": "EEPROM", "device_name": "tlv_eeprom", "device_parent": "SMBUS0"},
+        "dev_info": {"device_type": "SMBUS", "device_name": "SMBUS101", "device_parent": "SYSTEM"},
         "i2c":
         {
-            "topo_info": {"parent_bus": "0x0", "dev_addr": "0x56", "dev_type": "24c64"},
+            "topo_info": {"dev_addr": "0x65"},
+            "DEVICES":
+            [
+                {"dev": "MUX9"},
+                {"dev": "TEMP1"},
+                {"dev": "TEMP2"}
+            ]
+        }
+    },
+    "SMBUS102":
+    {
+        "dev_info": {"device_type": "SMBUS", "device_name": "SMBUS102", "device_parent": "SYSTEM"},
+        "i2c":
+        {
+            "topo_info": {"dev_addr": "0x66"},
+            "DEVICES":
+            [
+                {"dev": "MUX10"}
+            ]
+        }
+    },
+    "SMBUS105":
+    {
+        "dev_info": {"device_type": "SMBUS", "device_name": "SMBUS105", "device_parent": "SYSTEM"},
+        "i2c":
+        {
+            "topo_info": {"dev_addr": "0x69"},
+            "DEVICES":
+            [
+                {"dev": "EEPROM1"}
+            ]
+        }
+    },
+    "EEPROM1":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "EEPROM1", "device_parent": "SMBUS105"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x69", "dev_addr": "0x56", "dev_type": "24c64"},
             "dev_attr": {"access_mode": "BLOCK"},
-            "attr_list":
+            "attr_list": 
             [
                 {"attr_name": "eeprom"}
             ]
@@ -173,12 +219,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x70", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x7"},
+            "dev_attr": { "virt_bus":"0x7", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT1" },
                 { "chn":"1", "dev":"PORT2" },
-                { "chn":"2", "dev":"PORT3" },
+                { "chn":"2", "dev":"PORT3" }, 
                 { "chn":"3", "dev":"PORT4" },
                 { "chn":"4", "dev":"PORT5" },
                 { "chn":"5", "dev":"PORT6" },
@@ -193,12 +239,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x71", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0xF"},
+            "dev_attr": { "virt_bus":"0xF", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT9" },
                 { "chn":"1", "dev":"PORT10" },
-                { "chn":"2", "dev":"PORT11" },
+                { "chn":"2", "dev":"PORT11" }, 
                 { "chn":"3", "dev":"PORT12" },
                 { "chn":"4", "dev":"PORT13" },
                 { "chn":"5", "dev":"PORT14" },
@@ -213,12 +259,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x72", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x17"},
+            "dev_attr": { "virt_bus":"0x17", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT17" },
                 { "chn":"1", "dev":"PORT18" },
-                { "chn":"2", "dev":"PORT19" },
+                { "chn":"2", "dev":"PORT19" }, 
                 { "chn":"3", "dev":"PORT20" },
                 { "chn":"4", "dev":"PORT21" },
                 { "chn":"5", "dev":"PORT22" },
@@ -233,12 +279,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x3", "dev_addr":"0x73", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x1F"},
+            "dev_attr": { "virt_bus":"0x1F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT25" },
                 { "chn":"1", "dev":"PORT26" },
-                { "chn":"2", "dev":"PORT27" },
+                { "chn":"2", "dev":"PORT27" }, 
                 { "chn":"3", "dev":"PORT28" },
                 { "chn":"4", "dev":"PORT29" },
                 { "chn":"5", "dev":"PORT30" },
@@ -253,12 +299,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x70", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x27"},
+            "dev_attr": { "virt_bus":"0x27", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT33" },
                 { "chn":"1", "dev":"PORT34" },
-                { "chn":"2", "dev":"PORT35" },
+                { "chn":"2", "dev":"PORT35" }, 
                 { "chn":"3", "dev":"PORT36" },
                 { "chn":"4", "dev":"PORT37" },
                 { "chn":"5", "dev":"PORT38" },
@@ -273,12 +319,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x71", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x2F"},
+            "dev_attr": { "virt_bus":"0x2F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT41" },
                 { "chn":"1", "dev":"PORT42" },
-                { "chn":"2", "dev":"PORT43" },
+                { "chn":"2", "dev":"PORT43" }, 
                 { "chn":"3", "dev":"PORT44" },
                 { "chn":"4", "dev":"PORT45" },
                 { "chn":"5", "dev":"PORT46" },
@@ -293,12 +339,12 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x72", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x37"},
+            "dev_attr": { "virt_bus":"0x37", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT49" },
                 { "chn":"1", "dev":"PORT50" },
-                { "chn":"2", "dev":"PORT51" },
+                { "chn":"2", "dev":"PORT51" }, 
                 { "chn":"3", "dev":"PORT52" },
                 { "chn":"4", "dev":"PORT53" },
                 { "chn":"5", "dev":"PORT54" },
@@ -313,7 +359,7 @@
         "i2c":
         {
             "topo_info": { "parent_bus":"0x4", "dev_addr":"0x73", "dev_type":"pca9548"},
-            "dev_attr": { "virt_bus":"0x3F"},
+            "dev_attr": { "virt_bus":"0x3F", "idle_state":"-2"},
             "channel":
             [
                 { "chn":"0", "dev":"PORT57" },
@@ -327,379 +373,369 @@
             ]
         }
     },
+    "MUX9":
+    {
+        "dev_info": {  "device_type":"MUX", "device_name":"MUX9", "device_parent":"SMBUS101"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x65", "dev_addr":"0x70", "dev_type":"pca9548"},
+            "dev_attr": { "virt_bus":"0x49", "idle_state":"-2"},
+            "channel":
+            [
+                { "chn":"0", "dev":"TEMP3" },
+                { "chn":"1", "dev":"TEMP4" },
+                { "chn":"2", "dev":"TEMP5" },
+                { "chn":"3", "dev":"TEMP6" }
+            ]
+        }
+    },
+    "MUX10":
+    {
+        "dev_info": {  "device_type":"MUX", "device_name":"MUX10", "device_parent":"SMBUS102"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x66", "dev_addr":"0x73", "dev_type":"pca9548"},
+            "dev_attr": { "virt_bus":"0x51", "idle_state":"-2"},
+            "channel":
+            [
+                { "chn":"0", "dev":"FANTRAY1_EEPROM" },
+                { "chn":"1", "dev":"FANTRAY2_EEPROM" },
+                { "chn":"2", "dev":"FANTRAY3_EEPROM" },			
+                { "chn":"3", "dev":"PSU1" },
+                { "chn":"3", "dev":"PSU1-EEPROM" },
+                { "chn":"4", "dev":"PSU2" },
+                { "chn":"4", "dev":"PSU2-EEPROM" },
+                { "chn":"5", "dev":"PSU3" },
+                { "chn":"5", "dev":"PSU3-EEPROM" },
+                { "chn":"6", "dev":"PSU4" },
+                { "chn":"6", "dev":"PSU4-EEPROM" }
+            ]
+        }
+    },
+    "TEMP1":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP1", "device_parent":"SMBUS101"},
+        "dev_attr": { "display_name":"BB_OUTLET_TEMP"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x65", "dev_addr":"0x4d", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "TEMP2":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP2", "device_parent":"SMBUS101"},
+        "dev_attr": { "display_name":"BB_BUSBAR_TEMP"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x65", "dev_addr":"0x4e", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "TEMP3":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP3", "device_parent":"MUX9"},
+        "dev_attr": { "display_name":"TH5_REAR_RIGHT"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x49", "dev_addr":"0x48", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "TEMP4":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP4", "device_parent":"MUX9"},
+        "dev_attr": { "display_name":"12V_ENTRY_LEFT"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x4a", "dev_addr":"0x48", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "TEMP5":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP5", "device_parent":"MUX9"},
+        "dev_attr": { "display_name":"12V_ENTRY_RIGHT"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x4b", "dev_addr":"0x48", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "TEMP6":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP6", "device_parent":"MUX9"},
+        "dev_attr": { "display_name":"TH5_REAR_LEFT"},
+        "i2c":
+        {
+            "topo_info": { "parent_bus":"0x4c", "dev_addr":"0x48", "dev_type":"lm75"},
+            "attr_list":
+            [
+                { "attr_name": "temp1_high_threshold", "drv_attr_name":"temp1_max"},
+                { "attr_name": "temp1_max_hyst"},
+                { "attr_name": "temp1_input"}
+            ]
+        }
+    },
+    "FANTRAY1_EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY1_EEPROM", "device_parent": "MUX10"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x51", "dev_addr": "0x51", "dev_type": "24c64"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
+        }
+    },
+    "FANTRAY2_EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY2_EEPROM", "device_parent": "MUX10"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x52", "dev_addr": "0x51", "dev_type": "24c64"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
+        }
+    },
+    "FANTRAY3_EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "FANTRAY3_EEPROM", "device_parent": "MUX10"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x53", "dev_addr": "0x51", "dev_type": "24c64"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
+        }
+    },
     "PSU1":
     {
-        "dev_info": { "device_type":"PSU", "device_name":"PSU1", "device_parent":"MUX8"},
+        "dev_info": { "device_type":"PSU", "device_name":"PSU1", "device_parent":"MUX10"},
         "dev_attr": { "dev_idx":"1", "num_psu_fans": "1"},
         "i2c":
         {
             "interface":
             [
-                {"itf":"pmbus", "dev":"PSU1-PMBUS"}
-
+                { "itf":"pmbus", "dev":"PSU1-PMBUS" }
             ]
         }
     },
     "PSU1-PMBUS":
     {
-        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU1-PMBUS", "device_parent":"MUX8", "virt_parent":"PSU1"},
+        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU1-PMBUS", "device_parent":"MUX10", "virt_parent":"PSU1" },
         "i2c":
         {
-            "topo_info":{ "parent_bus":"0x3b", "dev_addr":"0x5b", "dev_type":"psu_pmbus"},
+            "topo_info":{ "parent_bus":"0x54", "dev_addr":"0x58", "dev_type":"psu_pmbus"},
             "attr_list":
             [
-                {"attr_name":"psu_present", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x04", "attr_cmpval":"0x00", "attr_len":"1"},
-                {"attr_name":"psu_power_good", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x01", "attr_cmpval":"0x01", "attr_len":"1"},
-                {"attr_name":"psu_model_name", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_serial_num", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
-                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"7"},
-                {"attr_name":"psu_fan_dir", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_p_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
-             ]
+                {"attr_name":"psu_model_name", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
+                {"attr_name":"psu_serial_num", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"16"},
+                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"6"},
+                {"attr_name":"psu_p_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
+            ]
+        }
+    },
+    "PSU1-EEPROM":
+    {
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU1-EEPROM", "device_parent": "MUX10"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x54", "dev_addr": "0x50", "dev_type": "24c02"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
         }
     },
     "PSU2":
     {
-        "dev_info": { "device_type":"PSU", "device_name":"PSU2", "device_parent":"MUX8"},
-        "dev_attr": { "dev_idx":"1", "num_psu_fans": "1"},
+        "dev_info": { "device_type":"PSU", "device_name":"PSU2", "device_parent":"MUX10"},
+        "dev_attr": { "dev_idx":"2", "num_psu_fans": "1"},
         "i2c":
         {
             "interface":
             [
-                {"itf":"pmbus", "dev":"PSU2-PMBUS"}
-
+                { "itf":"pmbus", "dev":"PSU2-PMBUS" }
+            ]
+        }
+    },	
+    "PSU2-PMBUS":
+    {
+        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU2-PMBUS", "device_parent":"MUX10", "virt_parent":"PSU2" },
+        "i2c":
+        {
+            "topo_info":{ "parent_bus":"0x55", "dev_addr":"0x58", "dev_type":"psu_pmbus"},
+            "attr_list":
+            [
+                {"attr_name":"psu_model_name", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
+                {"attr_name":"psu_serial_num", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"16"},
+                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"6"},
+                {"attr_name":"psu_p_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
             ]
         }
     },
-    "PSU2-PMBUS":
+    "PSU2-EEPROM":
     {
-        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU2-PMBUS", "device_parent":"MUX8", "virt_parent":"PSU2"},
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU2-EEPROM", "device_parent": "MUX10"},
         "i2c":
         {
-            "topo_info":{ "parent_bus":"0x3b", "dev_addr":"0x5b", "dev_type":"psu_pmbus"},
-            "attr_list":
-            [
-                {"attr_name":"psu_present", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x04", "attr_cmpval":"0x00", "attr_len":"1"},
-                {"attr_name":"psu_power_good", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x01", "attr_cmpval":"0x01", "attr_len":"1"},
-                {"attr_name":"psu_model_name", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_serial_num", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
-                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"7"},
-                {"attr_name":"psu_fan_dir", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_p_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
-             ]
+            "topo_info": {"parent_bus": "0x55", "dev_addr": "0x50", "dev_type": "24c02"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
         }
     },
     "PSU3":
     {
-        "dev_info": { "device_type":"PSU", "device_name":"PSU3", "device_parent":"MUX8"},
-        "dev_attr": { "dev_idx":"1", "num_psu_fans": "1"},
+        "dev_info": { "device_type":"PSU", "device_name":"PSU3", "device_parent":"MUX10"},
+        "dev_attr": { "dev_idx":"3", "num_psu_fans": "1"},
         "i2c":
         {
             "interface":
             [
-                {"itf":"pmbus", "dev":"PSU1-PMBUS"}
-
+                { "itf":"pmbus", "dev":"PSU3-PMBUS" }
+            ]
+        }
+    },	
+    "PSU3-PMBUS":
+    {
+        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU3-PMBUS", "device_parent":"MUX10", "virt_parent":"PSU3" },
+        "i2c":
+        {
+            "topo_info":{ "parent_bus":"0x56", "dev_addr":"0x58", "dev_type":"psu_pmbus"},
+            "attr_list":
+            [
+                {"attr_name":"psu_model_name", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
+                {"attr_name":"psu_serial_num", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"16"},
+                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"6"},
+                {"attr_name":"psu_p_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
             ]
         }
     },
-    "PSU3-PMBUS":
+    "PSU3-EEPROM":
     {
-        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU3-PMBUS", "device_parent":"MUX8", "virt_parent":"PSU3"},
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU3-EEPROM", "device_parent": "MUX10"},
         "i2c":
         {
-            "topo_info":{ "parent_bus":"0x3b", "dev_addr":"0x5b", "dev_type":"psu_pmbus"},
-            "attr_list":
-            [
-                {"attr_name":"psu_present", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x04", "attr_cmpval":"0x00", "attr_len":"1"},
-                {"attr_name":"psu_power_good", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x01", "attr_cmpval":"0x01", "attr_len":"1"},
-                {"attr_name":"psu_model_name", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_serial_num", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
-                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"7"},
-                {"attr_name":"psu_fan_dir", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_p_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
-             ]
+            "topo_info": {"parent_bus": "0x56", "dev_addr": "0x50", "dev_type": "24c02"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
         }
     },
     "PSU4":
     {
-        "dev_info": { "device_type":"PSU", "device_name":"PSU4", "device_parent":"MUX8"},
-        "dev_attr": { "dev_idx":"1", "num_psu_fans": "1"},
+        "dev_info": { "device_type":"PSU", "device_name":"PSU4", "device_parent":"MUX10"},
+        "dev_attr": { "dev_idx":"4", "num_psu_fans": "1"},
         "i2c":
         {
             "interface":
             [
-                {"itf":"pmbus", "dev":"PSU1-PMBUS"}
-
+                { "itf":"pmbus", "dev":"PSU4-PMBUS" }
             ]
         }
     },
     "PSU4-PMBUS":
     {
-        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU4-PMBUS", "device_parent":"MUX8", "virt_parent":"PSU4"},
+        "dev_info": { "device_type":"PSU-PMBUS", "device_name":"PSU4-PMBUS", "device_parent":"MUX10", "virt_parent":"PSU4" },
         "i2c":
         {
-            "topo_info":{ "parent_bus":"0x3b", "dev_addr":"0x5b", "dev_type":"psu_pmbus"},
+            "topo_info":{ "parent_bus":"0x57", "dev_addr":"0x58", "dev_type":"psu_pmbus"},
             "attr_list":
             [
-                {"attr_name":"psu_present", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x04", "attr_cmpval":"0x00", "attr_len":"1"},
-                {"attr_name":"psu_power_good", "attr_devaddr":"0x0d", "attr_devtype":"cpld", "attr_devname":"CPLD_B", "attr_offset":"0x60", "attr_mask":"0x01", "attr_cmpval":"0x01", "attr_len":"1"},
-                {"attr_name":"psu_model_name", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_serial_num", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
-                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"7"},
-                {"attr_name":"psu_fan_dir", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"17"},
-                {"attr_name":"psu_p_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_out", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_i_in", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
-                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x5b", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
-             ]
+                {"attr_name":"psu_model_name", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9a", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"14"},
+                {"attr_name":"psu_serial_num", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x9e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"16"},
+                {"attr_name":"psu_mfr_id", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x99", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"6"},
+                {"attr_name":"psu_p_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x96", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8b", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_out", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8c", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x97", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x88", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_i_in", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x89", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_fan1_speed_rpm", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x90", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_input", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0x8e", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_temp1_high_threshold", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xc0", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa5", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_v_out_min", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa4", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"},
+                {"attr_name":"psu_p_out_max", "attr_devaddr":"0x58", "attr_devtype":"pmbus", "attr_offset":"0xa7", "attr_mask":"0x0", "attr_cmpval":"0xff", "attr_len":"2"}
+            ]
         }
     },
-    "TEMP1":
+    "PSU4-EEPROM":
     {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP1"},
-        "dev_attr": { "display_name":"12V_ENTRY_LEFT"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_LEFT", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_LEFT", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_LEFT", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP2":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP2"},
-        "dev_attr": { "display_name":"12V_ENTRY_RIGHT"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_RIGHT", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_RIGHT", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"12V_ENTRY_RIGHT", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP3":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP3"},
-        "dev_attr": { "display_name":"BB_BUSBAR_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_BUSBAR_TEMP", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_BUSBAR_TEMP", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_BUSBAR_TEMP", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP4":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP4"},
-        "dev_attr": { "display_name":"BB_OUTLET_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_OUTLET_TEMP", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_OUTLET_TEMP", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"BB_OUTLET_TEMP", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP5":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP5"},
-        "dev_attr": { "display_name":"TH5_REAR_LEFT"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_LEFT", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_LEFT", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_LEFT", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP6":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP6"},
-        "dev_attr": { "display_name":"TH5_REAR_RIGHT"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_RIGHT", "field_pos":"3"},
-                    { "attr_name":"temp1_high_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_RIGHT", "field_pos":"16"},
-                    { "attr_name":"temp1_high_crit_threshold", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"TH5_REAR_RIGHT", "field_pos":"18"}
-                ]
-            }
-        }
-    },
-    "TEMP7":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP7"},
-        "dev_attr": { "display_name":"XP0R8V_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP0R8V_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP8":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP8"},
-        "dev_attr": { "display_name":"XP0R9V_0_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP0R9V_0_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP9":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP9"},
-        "dev_attr": { "display_name":"XP0R9V_1_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP0R9V_1_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP10":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP10"},
-        "dev_attr": { "display_name":"XP0R75V_0_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP0R75V_0_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP11":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP11"},
-        "dev_attr": { "display_name":"XP0R75V_1_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP0R75V_1_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP12":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP12"},
-        "dev_attr": { "display_name":"XP1R2V_0_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP1R2V_0_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP13":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP13"},
-        "dev_attr": { "display_name":"XP1R2V_1_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP1R2V_1_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP14":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP14"},
-        "dev_attr": { "display_name":"XP3R3V_E_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP3R3V_E_TEMP", "field_pos":"3"}
-                ]
-            }
-        }
-    },
-    "TEMP15":
-    {
-        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP15"},
-        "dev_attr": { "display_name":"XP3R3V_W_TEMP"},
-        "bmc": {
-            "ipmitool" : {
-                "attr_list":
-                [
-                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP3R3V_W_TEMP", "field_pos":"3"}
-                ]
-            }
+        "dev_info": {"device_type": "EEPROM", "device_name": "PSU4-EEPROM", "device_parent": "MUX10"},
+        "i2c":
+        {
+            "topo_info": {"parent_bus": "0x57", "dev_addr": "0x50", "dev_type": "24c02"},
+            "dev_attr": {"access_mode": "BLOCK"},
+            "attr_list": [
+                {"attr_name": "eeprom"}
+            ]
         }
     },
     "FAN-CTRL":
@@ -732,7 +768,7 @@
                     { "attr_name":"fan6_present", "bmc_cmd":"ipmitool raw 0x36 0xB9 0x4C 0x1C 0x00 0x02", "raw": "1", "type":"mask", "mask":"0x01"},
                     { "attr_name":"fan6_direction", "bmc_cmd":"ipmitool raw 0x0a 0x11 0x00 0x19 0x00 0x01",  "raw": "1", "type":"raw"},
                     { "attr_name":"fan6_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name" : "Fan_SYS_1_1", "field_pos":"2"},
-                    { "attr_name":"fan6_pwm", "bmc_cmd":"ipmitool raw 0x30 0xd6 0x00 0x00", "raw": "1", "type":"raw"}
+                    { "attr_name":"fan6_pwm", "bmc_cmd":"ipmitool raw 0x30 0xd6 0x00 0x00", "raw": "1", "type":"raw"}               
                 ]
             }
         }
@@ -3299,20 +3335,20 @@
     },
     "PORT65":
     {
-        "dev_info": { "device_type":"SFP28", "device_name":"SFP28_1", "device_parent":"SMBUS5"},
+        "dev_info": { "device_type":"SFP28", "device_name":"PORT65", "device_parent":"SMBUS5"},
         "dev_attr": { "dev_idx":"65"},
         "i2c":
         {
             "interface":
             [
-                { "itf":"eeprom", "dev":"SFP28_1-EEPROM" },
-                { "itf":"control", "dev":"SFP28_1-CTRL" }
+                { "itf":"eeprom", "dev":"PORT65-EEPROM" },
+                { "itf":"control", "dev":"PORT65-CTRL" }
             ]
         }
     },
-    "SFP28_1-EEPROM":
+    "PORT65-EEPROM":
     {
-        "dev_info": { "device_type":"", "device_name":"SFP28_1-EEPROM", "device_parent":"SMBUS5", "virt_parent":"PORT65"},
+        "dev_info": { "device_type":"", "device_name":"PORT65-EEPROM", "device_parent":"SMBUS5", "virt_parent":"PORT65"},
         "i2c":
         {
             "topo_info": { "parent_bus":"0x5", "dev_addr":"0x50", "dev_type":"optoe2"},
@@ -3322,37 +3358,37 @@
             ]
         }
     },
-    "SFP28_1-CTRL":
+    "PORT65-CTRL":
     {
-        "dev_info": { "device_type":"", "device_name":"SFP28_1-CTRL", "device_parent":"SMBUS5", "virt_parent":"PORT65"},
+        "dev_info": { "device_type":"", "device_name":"PORT65-CTRL", "device_parent":"SMBUS5", "virt_parent":"PORT65"},
         "i2c":
         {
             "topo_info": { "parent_bus":"0x5", "dev_addr":"0x66", "dev_type":"pddf_xcvr"},
             "attr_list":
-            [
-                { "attr_name":"xcvr_txfault", "attr_devtype":"fpgapci", "attr_offset":"0x0004", "attr_mask":"2", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_txdisable", "attr_devtype":"fpgapci", "attr_offset":"0x0004", "attr_mask":"3", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_present", "attr_devtype":"fpgapci", "attr_offset":"0x0004", "attr_mask":"1", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_rxlos", "attr_devtype":"fpgapci", "attr_offset":"0x0004", "attr_mask":"0", "attr_cmpval":"0x0"}
+            [			
+                { "attr_name":"xcvr_txfault", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"4", "attr_mask":"2", "attr_cmpval":"0x4", "attr_len":"1"},
+                { "attr_name":"xcvr_txdisable", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"4", "attr_mask":"3", "attr_cmpval":"0x8", "attr_len":"1"},
+                { "attr_name":"xcvr_present", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"4", "attr_mask":"1", "attr_cmpval":"0x0", "attr_len":"1"},
+                { "attr_name":"xcvr_rxlos", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"4", "attr_mask":"0", "attr_cmpval":"0x1", "attr_len":"1"}
             ]
         }
     },
     "PORT66":
     {
-        "dev_info": { "device_type":"SFP28", "device_name":"SFP28_2", "device_parent":"SMBUS6"},
-        "dev_attr": { "dev_idx":"65"},
+        "dev_info": { "device_type":"SFP28", "device_name":"PORT66", "device_parent":"SMBUS6"},
+        "dev_attr": { "dev_idx":"66"},
         "i2c":
         {
             "interface":
             [
-                { "itf":"eeprom", "dev":"SFP28_2-EEPROM" },
-                { "itf":"control", "dev":"SFP28_2-CTRL" }
+                { "itf":"eeprom", "dev":"PORT66-EEPROM" },
+                { "itf":"control", "dev":"PORT66-CTRL" }
             ]
         }
     },
-    "SFP28_2-EEPROM":
+    "PORT66-EEPROM":
     {
-        "dev_info": { "device_type":"", "device_name":"SFP28_2-EEPROM", "device_parent":"SMBUS5", "virt_parent":"PORT66"},
+        "dev_info": { "device_type":"", "device_name":"PORT66-EEPROM", "device_parent":"SMBUS6", "virt_parent":"PORT66"},
         "i2c":
         {
             "topo_info": { "parent_bus":"0x6", "dev_addr":"0x50", "dev_type":"optoe2"},
@@ -3362,18 +3398,18 @@
             ]
         }
     },
-    "SFP28_2-CTRL":
+    "PORT66-CTRL":
     {
-        "dev_info": { "device_type":"", "device_name":"SFP28_2-CTRL", "device_parent":"SMBUS5", "virt_parent":"PORT66"},
+        "dev_info": { "device_type":"", "device_name":"PORT66-CTRL", "device_parent":"SMBUS6", "virt_parent":"PORT66"},
         "i2c":
         {
             "topo_info": { "parent_bus":"0x6", "dev_addr":"0x66", "dev_type":"pddf_xcvr"},
             "attr_list":
             [
-                { "attr_name":"xcvr_txfault", "attr_devtype":"fpgapci", "attr_offset":"0x0008", "attr_mask":"2", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_txdisable", "attr_devtype":"fpgapci", "attr_offset":"0x0008", "attr_mask":"3", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_present", "attr_devtype":"fpgapci", "attr_offset":"0x0008", "attr_mask":"1", "attr_cmpval":"0x0"},
-                { "attr_name":"xcvr_rxlos", "attr_devtype":"fpgapci", "attr_offset":"0x0008", "attr_mask":"0", "attr_cmpval":"0x0"}
+                { "attr_name":"xcvr_txfault", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"8", "attr_mask":"2", "attr_cmpval":"0x4", "attr_len":"1"},
+                { "attr_name":"xcvr_txdisable", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"8", "attr_mask":"3", "attr_cmpval":"0x8", "attr_len":"1"},
+                { "attr_name":"xcvr_present", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"8", "attr_mask":"1", "attr_cmpval":"0x0", "attr_len":"1"},
+                { "attr_name":"xcvr_rxlos", "attr_devaddr":"0x1000", "attr_devtype":"fpgapci", "attr_offset":"8", "attr_mask":"0", "attr_cmpval":"0x1", "attr_len":"1"}
             ]
         }
     }

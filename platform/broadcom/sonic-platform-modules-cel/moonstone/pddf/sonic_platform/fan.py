@@ -10,7 +10,7 @@
 
 try:
     from sonic_platform_pddf_base.pddf_fan import PddfFan
-    from .helper import APIHelper
+    from .helper import APIHelper       
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
 
@@ -18,31 +18,76 @@ except ImportError as e:
 class Fan(PddfFan):
     """PDDF Platform-Specific Fan class"""
 
+    STATUS_LED_COLOR_AUTO = "auto"
+
+    FANTRAY_PWM_CTRL_REG_MAP = {
+        1: 0xA140,
+        2: 0xA144,
+        3: 0xA148
+    }
+
+    FANTRAY_LED_CTRL_REG_MAP = {
+        1: 0xA137,
+        2: 0xA138,
+        3: 0xA139
+    }
+
+    FANTRAY_STATUS_REG_MAP = {
+        1: 0xA141,
+        2: 0xA145,
+        3: 0xA149
+    }
+
+    FAN_RPM_STATUS_REG_MAP = {
+        1: 0xA142,
+        2: 0xA143,
+        3: 0xA146,
+        4: 0xA147,
+        5: 0xA14A,
+        6: 0xA14B
+    }
+
     def __init__(self, tray_idx, fan_idx=0, pddf_data=None, pddf_plugin_data=None, is_psu_fan=False, psu_index=0):
-        # idx is 0-based
+        # idx is 0-based 
         PddfFan.__init__(self, tray_idx, fan_idx, pddf_data, pddf_plugin_data, is_psu_fan, psu_index)
         self._api_helper = APIHelper()
-        self.target_speed = 100
-        self.fan_fru_id = [215, 142, 30]
+        self.target_speed = 0
+        self.runtime_speed = 0
 
     # Provide the functions/variables below for which implementation is to be overwritten
 
+    def get_psu_presence(self):
+        from sonic_platform.psu import Psu
+        psu = Psu(self.fans_psu_index - 1, self.pddf_obj, self.plugin_data)
+        return psu.get_presence()
+
+    def get_psu_powergood_status(self):
+        from sonic_platform.psu import Psu
+        psu = Psu(self.fans_psu_index - 1, self.pddf_obj, self.plugin_data)
+        return psu.get_powergood_status()
+
     def get_presence(self):
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
+        if self.is_psu_fan:
+            return self.get_psu_presence()
+        else:
+            reg = self.FANTRAY_STATUS_REG_MAP.get(self.fantray_index)
+            status, result = self._api_helper.cpld_lpc_read(reg)
+            if (int(result, 16) & 0x4 == 0x0) and status == True:
                 return True
             else:
-                reg = [0xA141, 0xA141, 0xA145, 0xA145, 0xA149, 0xA149]
-                idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
+                return False
 
-                status, result = self._api_helper.cpld_lpc_read(reg[idx - 1])
+    def get_status(self):
 
-                if (int(result, 16) & 0x4 == 0x0) and status == True:
-                    return True
-                else:
-                    return False
+        if self.is_psu_fan:
+            return self.get_psu_powergood_status()
         else:
-            return PddfFan.get_presence(self)
+            reg = self.FANTRAY_STATUS_REG_MAP.get(self.fantray_index)
+            status, result = self._api_helper.cpld_lpc_read(reg)
+            if (int(result, 16) & 0x8 == 0x0) and status == True:
+                return True
+            else:
+                return False
 
     def get_direction(self):
         """
@@ -54,20 +99,6 @@ class Fan(PddfFan):
         """
         return self.FAN_DIRECTION_INTAKE
 
-    def get_speed_tolerance(self):
-        """
-        Retrieves the speed tolerance of the fan
-        Returns:
-            An integer, the percentage of variance from target speed which is
-            considered tolerable
-        """
-        if self.get_presence():
-            tolerance = 20
-        else:
-            tolerance = 0
-
-        return tolerance
-
     def get_speed(self):
         """
         Retrieves the speed of fan as a percentage of full speed
@@ -76,24 +107,21 @@ class Fan(PddfFan):
             An integer, the percentage of full fan speed, in the range 0 (off)
                  to 100 (full speed)
         """
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
-                return PddfFan.get_speed(self)
-            else:
-                # TODO This calculation should change based on MAX FAN SPEED
-                reg = [0xA140, 0xA140, 0xA144, 0xA144, 0xA148, 0xA148]
-                idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
-
-                status, fpwm = self._api_helper.cpld_lpc_read(reg[idx - 1])
-
-                pwm_to_dc = eval(self.plugin_data['FAN']['pwm_to_duty_cycle'])
-                speed_percentage = int(round(pwm_to_dc(int(fpwm, 16))))
-                self.target_speed = speed_percentage
-
-                return speed_percentage
+        if self.is_psu_fan:
+            self.runtime_speed = super().get_speed()
+            return self.runtime_speed
         else:
-            return PddfFan.get_speed(self)
+            if self.get_presence() is False:
+                return 0
 
+            reg = self.FANTRAY_PWM_CTRL_REG_MAP.get(self.fantray_index)
+            status, fpwm = self._api_helper.cpld_lpc_read(reg)
+            pwm_to_dc = eval(self.plugin_data['FAN']['pwm_to_duty_cycle'])
+            speed_percentage = int(round(pwm_to_dc(int(fpwm, 16))))
+            self.runtime_speed = speed_percentage
+
+            return speed_percentage
+            
     def get_speed_rpm(self):
         """
         Retrieves the speed of fan in RPM
@@ -101,33 +129,20 @@ class Fan(PddfFan):
         Returns:
             An integer, Speed of fan in RPM
         """
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
-                return PddfFan.get_speed_rpm(self)
-            else:
-                reg = [0xA142, 0xA143, 0xA146, 0xA147, 0xA14A, 0xA14B]
-                idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
-
-                status, fpwm = self._api_helper.cpld_lpc_read(reg[idx - 1])
-
-                if self.fan_index == 1:
-                    rpm_speed = 69 * int(fpwm, 16)
-                else:
-                    rpm_speed = 78 * int(fpwm, 16)
-
-                return rpm_speed
+        if self.is_psu_fan:
+            return super().get_speed_rpm()
         else:
-            return PddfFan.get_speed_rpm(self)
-
-    def get_speed_tolerance(self):
-        """
-        Retrieves the speed tolerance of the fan
-
-        Returns:
-            An integer, the percentage of variance from target speed which is
-                 considered tolerable
-        """
-        return 20
+            if self.get_presence() is False:
+                return 0
+                
+            idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
+            reg = self.FAN_RPM_STATUS_REG_MAP.get(idx)
+            status, result = self._api_helper.cpld_lpc_read(reg)
+            if self.fan_index == 1:
+                rpm_speed = 78 * int(result, 16)
+            else:
+                rpm_speed = 69 * int(result, 16)
+            return rpm_speed
 
     def get_target_speed(self):
         """
@@ -137,12 +152,24 @@ class Fan(PddfFan):
             An integer, the percentage of full fan speed, in the range 0 (off)
                  to 100 (full speed)
         """
-        return self.target_speed
+        if self.is_psu_fan:
+            if self.get_psu_powergood_status():
+                return self.runtime_speed
+            else:
+                return 100
+        else:
+            if self.get_presence() and self.get_status():
+                if self.target_speed == 0:
+                    return self.runtime_speed
+                else:
+                    return self.target_speed
+            else:
+                return 100
 
-    def set_speed(self, speed):
+    def __set_speed(self, speed):
         """
         Sets the fan speed
-
+        
         Args:
             speed: An integer, the percentage of full fan speed to set fan to,
                    in the range 0 (off) to 100 (full speed)
@@ -150,45 +177,66 @@ class Fan(PddfFan):
         Returns:
             A boolean, True if speed is set successfully, False if not
         """
+        if self.is_psu_fan:
+            print("Setting PSU fan speed is not allowed")
+            return False
 
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
-                result = False
-            else:
-                reg = [0xA140, 0xA140, 0xA144, 0xA144, 0xA148, 0xA148]
+        if speed <= 0 or speed > 100:
+            print("Error: Invalid speed %d. Please provide a valid speed percentage" % speed)
+            return False
 
-                hex_value = int(speed * 255 / 100)
-                idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
+        if 'duty_cycle_to_pwm' not in self.plugin_data['FAN']:
+            print("Setting fan speed is not allowed !")
+            return False
 
-                result = self._api_helper.cpld_lpc_write(reg[idx - 1], hex_value)
+        duty_cycle_to_pwm = eval(self.plugin_data['FAN']['duty_cycle_to_pwm'])
+        pwm = int(round(duty_cycle_to_pwm(speed)))
+
+        # FAN 1 & 2 in same fantray share the same register, skip Fan2 setting
+        if self.fan_index == 2:
+            return True
+        # Set FAN PWM through baseboard CPLD
+        reg = self.FANTRAY_PWM_CTRL_REG_MAP.get(self.fantray_index)
+        status = self._api_helper.cpld_lpc_write(reg, pwm)
+        if status == True:
+            self.target_speed = pwm
+
+        return status
+
+    def set_speed(self, speed):
+        if self.is_psu_fan:
+            print("Setting PSU fan speed is not allowed")
+            return False
+    
+        if speed > 0:
+            if self._api_helper.fsc_enabled():
+                self._api_helper.fsc_enable(False)
+                if self._api_helper.fsc_enabled():
+                    return False
+            return self.__set_speed(speed)
+        elif speed == 0:
+            if self._api_helper.fsc_enabled() == False:
+                self._api_helper.fsc_enable(True)
+                if self._api_helper.fsc_enabled() == False:
+                    return False
+            self.target_speed = 0
+            return True
         else:
-            result = PddfFan.set_speed(self, speed)
-
-        if result: self.target_speed = speed
-        return result
+            return False
 
     def set_status_led(self, color):
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
-                return False
+        color_dict = {
+            self.STATUS_LED_COLOR_GREEN: 0x5,
+            self.STATUS_LED_COLOR_AMBER: 0x6,
+            self.STATUS_LED_COLOR_OFF: 0x4,
+            self.STATUS_LED_COLOR_AUTO: 0x0
+        }
 
-            bmc_color_dict = {
-                self.STATUS_LED_COLOR_GREEN: 0x5,
-                self.STATUS_LED_COLOR_AMBER: 0x6,
-                self.STATUS_LED_COLOR_OFF: 0x4
-            }
+        if color_dict.get(color, 0xff) == 0xff or self.is_psu_fan:
+            return False
 
-            reg = [0xA137, 0xA137, 0xA138, 0xA138, 0xA139, 0xA139]
-            idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
-
-            return self._api_helper.cpld_lpc_write(reg[idx - 1], bmc_color_dict.get(color, 0x0))
-        else:
-            color_dict = {
-                self.STATUS_LED_COLOR_GREEN: "green",
-                self.STATUS_LED_COLOR_AMBER: "amber",
-                self.STATUS_LED_COLOR_OFF: "off"
-            }
-            return PddfFan.set_status_led(self, color_dict.get(color, "off"))
+        reg = self.FANTRAY_LED_CTRL_REG_MAP.get(self.fantray_index)
+        return self._api_helper.cpld_lpc_write(reg, color_dict.get(color))
 
     def get_status_led(self):
         """
@@ -202,72 +250,20 @@ class Fan(PddfFan):
             STATUS_LED_COLOR_RED = "red"
             STATUS_LED_COLOR_OFF = "off"
         """
-        if self._api_helper.with_bmc():
-            if self.is_psu_fan:
-                return False
+        if self.is_psu_fan:
+            return False
 
-            reg = [0xA141, 0xA141, 0xA145, 0xA145, 0xA149, 0xA149]
-            idx = (self.fantray_index-1)*self.platform['num_fans_pertray'] + self.fan_index
-
-            status, result = self._api_helper.cpld_lpc_read(reg[idx - 1])
-            if status == True:
-                result = int(result, 16) & 0x3
-            else:
-                result = 0
-
-            status_led = {
-                0: self.STATUS_LED_COLOR_OFF,
-                1: self.STATUS_LED_COLOR_GREEN,
-                2: self.STATUS_LED_COLOR_AMBER,
-            }.get(result, self.STATUS_LED_COLOR_OFF)
-
+        reg = self.FANTRAY_STATUS_REG_MAP.get(self.fantray_index)
+        status, result = self._api_helper.cpld_lpc_read(reg)
+        if status == True:
+            result = int(result, 16) & 0x3
         else:
-            result =  PddfFan.get_status_led(self)
+            result = 0
 
-            status_led = {
-                "off": self.STATUS_LED_COLOR_OFF,
-                "green": self.STATUS_LED_COLOR_GREEN,
-                "amber": self.STATUS_LED_COLOR_AMBER,
-            }.get(result, self.STATUS_LED_COLOR_OFF)
+        status_led = {
+            0: self.STATUS_LED_COLOR_OFF,
+            1: self.STATUS_LED_COLOR_GREEN,
+            2: self.STATUS_LED_COLOR_AMBER,
+        }.get(result, self.STATUS_LED_COLOR_OFF)
 
         return status_led
-
-    def get_model(self):
-        """
-        Retrieves the model number (or part number) of the device
-        Returns:
-            string: Model/part number of device
-        """
-        if self.is_psu_fan:
-            return "Unknown"
-
-        model = "Unknown"
-        if self._api_helper.with_bmc():
-            ipmi_fru_idx = self.fan_fru_id[self.fantray_index -1]
-            status, raw_model = self._api_helper.ipmi_fru(ipmi_fru_idx, "Board Part Number")
-
-            fru_pn_list = raw_model.split()
-            if len(fru_pn_list) > 4:
-                model = fru_pn_list[4]
-
-        return model
-
-    def get_serial(self):
-        """
-        Retrieves the serial number of the device
-        Returns:
-            string: Serial number of device
-        """
-        if self.is_psu_fan:
-            return "Unknown"
-
-        serial = "Unknown"
-        if self._api_helper.with_bmc():
-            ipmi_fru_idx = self.fan_fru_id[self.fantray_index -1]
-            status, raw_model = self._api_helper.ipmi_fru(ipmi_fru_idx, "Board Serial")
-
-            fru_sr_list = raw_model.split()
-            if len(fru_sr_list) > 3:
-                serial = fru_sr_list[3]
-
-        return serial
