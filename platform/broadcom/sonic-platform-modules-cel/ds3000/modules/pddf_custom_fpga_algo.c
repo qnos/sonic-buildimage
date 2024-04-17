@@ -476,7 +476,7 @@ static int fpga_axi_iic_access(struct i2c_adapter *adap, struct i2c_msg *msgs, i
 static u32 fpga_axi_iic_func(struct i2c_adapter *adap)
 {
     /* a typical full-I2C adapter would use the following  */
-    return I2C_FUNC_I2C | I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE | I2C_FUNC_SMBUS_BYTE_DATA;
+    return I2C_FUNC_I2C | I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE | I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_I2C_BLOCK;
 }
 
 static const struct i2c_algorithm axi_iic_algorithm = {
