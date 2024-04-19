@@ -13,17 +13,14 @@ class APIHelper():
         pass
         
     def run_command(self, cmd):
-        status = True
-        result = ""
         try:
-            p = subprocess.Popen(
-                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            raw_data, err = p.communicate()
-            if err.decode('UTF-8') == '':
-                result = raw_data.strip().decode('UTF-8')
-        except Exception:
+            data = subprocess.check_output(cmd, shell=True,
+                    universal_newlines=True, stderr=subprocess.STDOUT).strip()
+            status = True
+        except subprocess.CalledProcessError as ex:
+            data = ex.output
             status = False
-        return status, result
+        return status, data
         
     def get_register_value(self, getreg_path, register):
         cmd = "echo {1} > {0}; cat {0}".format(getreg_path, register)

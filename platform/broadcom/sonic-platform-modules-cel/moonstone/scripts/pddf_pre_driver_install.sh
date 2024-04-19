@@ -16,3 +16,11 @@ if [ -e ${pddf_psu_driver} ]; then
     mv ${pddf_psu_driver} ${pddf_psu_driver}-bk
 fi
 echo "${pddf_psu_driver} driver module has rename now"
+
+insmod "/usr/lib/modules/${ker_name}/extra/i2c-xiic-fpga.ko"
+insmod "/usr/lib/modules/${ker_name}/extra/switchboard_fpga.ko"
+insmod "/usr/lib/modules/${ker_name}/extra/baseboard_cpld.ko"
+
+sleep 3
+
+sync

@@ -20,7 +20,8 @@ try:
     from sonic_platform.sfp import Sfp  
     from sonic_platform.watchdog import Watchdog
     from sonic_platform.component import Component
-    from .helper import APIHelper   
+    from .helper import APIHelper
+    from .thermal import NonPddfThermal, NONPDDF_THERMAL_SENSORS
     import sys
     import subprocess
     from .event import XcvrEvent
@@ -28,6 +29,8 @@ try:
     from sonic_platform_base.sfp_base import SfpBase
 except ImportError as e:
     raise ImportError(str(e) + "- required module not found")
+
+RESET_SOURCE_BIOS_REG = 0xA107
 
 class Chassis(PddfChassis):
     """
@@ -46,6 +49,17 @@ class Chassis(PddfChassis):
         self.STATUS_LED_COLOR_GREEN_BLINK = 'green_blink'
         self.STATUS_LED_COLOR_AMBER_BLINK = 'green_blink'
         self.STATUS_LED_COLOR_UNKNOWN = 'unknown'
+
+        thermal_count = len(self._thermal_list)
+        if not self._api_helper.with_bmc():
+            for idx, name in enumerate(NONPDDF_THERMAL_SENSORS):
+                thermal = NonPddfThermal(thermal_count + idx, name)
+                self._thermal_list.append(thermal)
+        else:
+            thermal = NonPddfThermal(thermal_count + 0, "CPU_TEMP")
+            self._thermal_list.append(thermal)
+            thermal = NonPddfThermal(thermal_count + 1, "TH5_CORE_TEMP")
+            self._thermal_list.append(thermal)
 
     def __initialize_components(self):
 
@@ -88,6 +102,47 @@ class Chassis(PddfChassis):
                 index, len(self._sfp_list)))
 
         return sfp
+
+    def get_reboot_cause(self):
+        """
+        Retrieves the cause of the previous reboot
+        Returns:
+            A tuple (string, string) where the first element is a string
+            containing the cause of the previous reboot. This string must be
+            one of the predefined strings in this class. If the first string
+            is "REBOOT_CAUSE_HARDWARE_OTHER", the second string can be used
+            to pass a description of the reboot cause.
+        """
+        status, hw_reboot_cause = self._api_helper.cpld_lpc_read(RESET_SOURCE_BIOS_REG)
+        if status == False: 
+            return (self.REBOOT_CAUSE_HARDWARE_OTHER, 'Hardware reason')
+
+        if hw_reboot_cause == "0x77":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Power Cycle Reset'
+        elif hw_reboot_cause == "0x66":
+            reboot_cause = self.REBOOT_CAUSE_WATCHDOG
+            description = 'Hardware Watchdog Reset'
+        elif hw_reboot_cause == "0x44":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'CPU Warm Reset'
+        elif hw_reboot_cause == "0x33":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Soft-Set Cold Reset'
+        elif hw_reboot_cause == "0x22":
+            reboot_cause = self.REBOOT_CAUSE_NON_HARDWARE
+            description = 'Soft-Set Warm Reset'
+        elif hw_reboot_cause == "0x11":
+            reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
+            description = 'Power Off Reset'
+        elif hw_reboot_cause == "0x00":
+            reboot_cause = self.REBOOT_CAUSE_POWER_LOSS
+            description = 'Power Cycle Reset'
+        else:
+            reboot_cause = self.REBOOT_CAUSE_HARDWARE_OTHER
+            description = 'Hardware reason'
+
+        return (reboot_cause, description)
 
     def get_watchdog(self):
         """
