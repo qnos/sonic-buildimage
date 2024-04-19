@@ -27,6 +27,8 @@ class Psu(PddfPsu):
         4: 154
     }
 
+    STATUS_LED_COLOR_BLUE = 'blue'
+
     def __init__(self, index, pddf_data=None, pddf_plugin_data=None):
         PddfPsu.__init__(self, index, pddf_data, pddf_plugin_data)
         self._api_helper = APIHelper()
@@ -102,7 +104,7 @@ class Psu(PddfPsu):
         if psu_led_device not in self.pddf_obj.data.keys():
             if self.get_presence():
                 if self.get_powergood_status():
-                    return self.STATUS_LED_COLOR_GREEN
+                    return self.STATUS_LED_COLOR_BLUE
                 else:
                     return self.STATUS_LED_COLOR_AMBER
             else:

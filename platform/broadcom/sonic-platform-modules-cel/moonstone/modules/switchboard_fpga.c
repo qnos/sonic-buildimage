@@ -45,7 +45,8 @@ static char *i2c_core_sel = "fpga-xiic-i2c";
 #define FPGA_VERSION_MN_MSK     0x00ff
 #define FPGA_SCRATCH            0x0004
 #define FPGA_PORT_XCVR_READY    0x000c
-
+#define TH5_MAX_TEMP_REG        0x0078
+#define TH5_MIN_TEMP_REG        0x0080
 
 /* SFP CTR/STAT BASE ADDR*/
 #define SFP_PORT_CTRL_STAT_BASE     0x1000
@@ -431,11 +432,90 @@ static ssize_t version_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "0x%8.8x\n", data);
 }
 
+static ssize_t TH5_max_temp_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	u32 data;
+	s64 temp;
+	ssize_t ret_val = 0;
+
+
+	mutex_lock(&fpga_data->fpga_lock);
+	data = ioread32(fpga_dev.data_base_addr + TH5_MAX_TEMP_REG);
+
+	// protect deviding by 0
+	if (data == 0) {
+		ret_val = sprintf(buf, "invalid raw data\n");
+	} else {
+		/* original calculation */
+		/* temp = ((1000000000 / data / 40 / 2 - 1) * (-0.23734)) + 356.07; */
+		temp = (((1000000000 / data / 40 / 2 - 1) * (-23734)) + 35607000) / 100;
+		ret_val = sprintf(buf, "%lld\n", temp);
+	}
+
+	mutex_unlock(&fpga_data->fpga_lock);
+
+	return ret_val;
+}
+
+static ssize_t TH5_max_temp_raw_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	u32 data;
+
+
+	mutex_lock(&fpga_data->fpga_lock);
+	data = ioread32(fpga_dev.data_base_addr + TH5_MAX_TEMP_REG);
+	mutex_unlock(&fpga_data->fpga_lock);
+	return sprintf(buf, "0x%x\n", data);
+}
+
+static ssize_t TH5_min_temp_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{	
+	u32 data;
+	s64 temp;
+	ssize_t ret_val = 0;
+
+
+	mutex_lock(&fpga_data->fpga_lock);
+	data = ioread32(fpga_dev.data_base_addr + TH5_MIN_TEMP_REG);
+
+	// protect deviding by 0
+	if (data == 0) {
+		ret_val = sprintf(buf, "invalid raw data\n");
+	} else {
+		/* original calculation */
+		/* temp = ((1000000000 / data / 40 / 2 - 1) * (-0.23734)) + 356.07; */
+		temp = (((1000000000 / data / 40 / 2 - 1) * (-23734)) + 35607000) / 100;
+		ret_val = sprintf(buf, "%lld\n", temp);
+	}
+
+	mutex_unlock(&fpga_data->fpga_lock);
+
+	return ret_val;	
+}
+
+static ssize_t TH5_min_temp_raw_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	u32 data;
+
+
+	mutex_lock(&fpga_data->fpga_lock);
+	data = ioread32(fpga_dev.data_base_addr + TH5_MIN_TEMP_REG);
+	mutex_unlock(&fpga_data->fpga_lock);
+	return sprintf(buf, "0x%x\n", data);
+}
 /* FPGA attributes */
 static DEVICE_ATTR_RW(getreg);
 static DEVICE_ATTR_RW(scratch);
 static DEVICE_ATTR_WO(setreg);
 static DEVICE_ATTR_RO(version);
+static DEVICE_ATTR_RO(TH5_max_temp);
+static DEVICE_ATTR_RO(TH5_max_temp_raw);
+static DEVICE_ATTR_RO(TH5_min_temp);
+static DEVICE_ATTR_RO(TH5_min_temp_raw);
 // static BIN_ATTR_RO(dump, PORT_XCVR_REGISTER_SIZE);
 
 // static struct bin_attribute *fpga_bin_attrs[] = {
@@ -448,6 +528,10 @@ static struct attribute *fpga_attrs[] = {
 		&dev_attr_scratch.attr,
 		&dev_attr_setreg.attr,
 		&dev_attr_version.attr,
+		&dev_attr_TH5_max_temp.attr,
+		&dev_attr_TH5_max_temp_raw.attr,
+		&dev_attr_TH5_min_temp.attr,
+		&dev_attr_TH5_min_temp_raw.attr,		
 		NULL,
 };
 
@@ -1440,7 +1524,7 @@ static int cls_fpga_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		i2c_bus_configs[i].res[0].start += rstart;
 		i2c_bus_configs[i].res[0].end += rstart;
 
-		dev_dbg(&dev->dev, "i2c-bus.%d: 0x%llx - 0x%llx\n",
+		dev_info(&dev->dev, "i2c-bus.%d: 0x%llx - 0x%llx\n",
 			i2c_bus_configs[i].id,
 			i2c_bus_configs[i].res[0].start,
 			i2c_bus_configs[i].res[0].end);

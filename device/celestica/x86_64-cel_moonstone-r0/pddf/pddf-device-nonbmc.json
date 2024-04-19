@@ -31,17 +31,15 @@
         "std_kos":
         [
             "i2c_dev",
+            "i2c_mux_pca954x",
             "at24",
             "optoe",
             "ucd9000",
-            "icp10100",
             "lm75",
-            "i2c_mux_pca954x"
+            "isl68137"
         ],
         "pddf_kos":
         [
-            "switchboard_fpga",
-            "baseboard_cpld",
             "pddf_client_module",
             "pddf_custom_mux",
             "pddf_psu_module",
