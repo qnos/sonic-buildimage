@@ -29,23 +29,27 @@ class Sfp(PddfSfp):
 
     # Provide the functions/variables below for which implementation is to be overwritten
 
+    def get_device_type(self):
+        device = 'PORT{}'.format(self.port_index)
+        return self.pddf_obj.get_device_type(device)
+
     def get_reset_status(self):
         device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
+        if self.pddf_obj.get_device_type(device).startswith('SFP'):
             return False
         else:
             return super().get_reset_status()
 
     def get_lpmode(self):
         device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
+        if self.pddf_obj.get_device_type(device).startswith('SFP'):
             return super().get_tx_disable()
         else:
             return super().get_lpmode()
 
     def reset(self):
         device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
+        if self.pddf_obj.get_device_type(device).startswith('SFP'):
             return False
         else:
             status = False
@@ -77,9 +81,15 @@ class Sfp(PddfSfp):
 
     def set_lpmode(self, lpmode):
         device = 'PORT{}'.format(self.port_index)
-        if re.search('^SFP', self.pddf_obj.get_device_type(device)):
+        if self.pddf_obj.get_device_type(device).startswith('SFP'):
+            if lpmode == False:
+                super().tx_disable(True)
+                time.sleep(0.1)
             return super().tx_disable(lpmode)
         else:
+            if lpmode == False:
+                super().set_lpmode(True)
+                time.sleep(0.1)
             return super().set_lpmode(lpmode)
 
     # Provide the functions/variables below for which implementation is to be overwritten

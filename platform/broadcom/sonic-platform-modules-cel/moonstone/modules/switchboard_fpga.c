@@ -121,7 +121,6 @@ static struct class *fpgafwclass;
 static struct moonstone_fpga_data *fpga_data;
 static struct device *sff_dev;
 
-
 /* I2C bus speed param */
 static int bus_clock_master_1 = 100;
 module_param(bus_clock_master_1, int, 0660);
@@ -786,7 +785,7 @@ static ssize_t osfp_int_show(struct device *dev, struct device_attribute *attr, 
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 	
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0){
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();
@@ -833,7 +832,7 @@ static ssize_t osfp_modprs_show(struct device *dev, struct device_attribute *att
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 	
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0){
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();
@@ -880,7 +879,7 @@ static ssize_t osfp_reset_show(struct device *dev, struct device_attribute *attr
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 	
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0){
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();
@@ -935,7 +934,7 @@ static ssize_t osfp_reset_store(struct device *dev, struct device_attribute *att
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0) {
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();
@@ -999,7 +998,7 @@ static ssize_t osfp_lpmod_show(struct device *dev, struct device_attribute *attr
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0) {
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();
@@ -1053,7 +1052,7 @@ static ssize_t osfp_lpmod_store(struct device *dev, struct device_attribute *att
 		value = portid - PORT_AMNT_PER_SW_CPLD;
 	}
 
-	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value);
+	err = cpld_i2c_write_byte(cpld_addr, PORT_SEL_SW_CPLD_REG_ADDR, value - 1);
 	if (err < 0) {
 		if (ptr_osfp_mutex_unlock){
 			ptr_osfp_mutex_unlock();

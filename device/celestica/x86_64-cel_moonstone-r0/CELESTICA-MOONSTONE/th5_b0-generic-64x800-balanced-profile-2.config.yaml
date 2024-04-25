@@ -806,131 +806,131 @@ bcm_device:
             1:
                 dport_map_port: 1
             11:
-                dport_map_port: 2
-            16:
-                dport_map_port: 3
-            6:
-                dport_map_port: 4
-            22:
                 dport_map_port: 5
-            33:
-                dport_map_port: 6
-            38:
-                dport_map_port: 7
-            27:
-                dport_map_port: 8
-            44:
+            16:
                 dport_map_port: 9
-            55:
-                dport_map_port: 10
-            60:
-                dport_map_port: 11
-            49:
-                dport_map_port: 12
-            66:
+            6:
                 dport_map_port: 13
-            77:
-                dport_map_port: 14
-            82:
-                dport_map_port: 15
-            71:
-                dport_map_port: 16
-            88:
+            22:
                 dport_map_port: 17
-            99:
-                dport_map_port: 18
-            104:
-                dport_map_port: 19
-            93:
-                dport_map_port: 20
-            110:
+            33:
                 dport_map_port: 21
-            121:
-                dport_map_port: 22
-            126:
-                dport_map_port: 23
-            115:
-                dport_map_port: 24
-            132:
+            38:
                 dport_map_port: 25
-            143:
-                dport_map_port: 26
-            148:
-                dport_map_port: 27
-            137:
-                dport_map_port: 28
-            154:
+            27:
                 dport_map_port: 29
-            165:
-                dport_map_port: 30
-            170:
-                dport_map_port: 31
-            159:
-                dport_map_port: 32
-            176:
+            44:
                 dport_map_port: 33
-            187:
-                dport_map_port: 34
-            192:
-                dport_map_port: 35
-            181:
-                dport_map_port: 36
-            198:
+            55:
                 dport_map_port: 37
-            209:
-                dport_map_port: 38
-            214:
-                dport_map_port: 39
-            203:
-                dport_map_port: 40
-            220:
+            60:
                 dport_map_port: 41
-            231:
-                dport_map_port: 42
-            236:
-                dport_map_port: 43
-            225:
-                dport_map_port: 44
-            242:
+            49:
                 dport_map_port: 45
-            253:
-                dport_map_port: 46
-            258:
-                dport_map_port: 47
-            247:
-                dport_map_port: 48
-            264:
+            66:
                 dport_map_port: 49
-            275:
-                dport_map_port: 50
-            280:
-                dport_map_port: 51
-            269:
-                dport_map_port: 52
-            286:
+            77:
                 dport_map_port: 53
-            297:
-                dport_map_port: 54
-            302:
-                dport_map_port: 55
-            291:
-                dport_map_port: 56
-            308:
+            82:
                 dport_map_port: 57
-            319:
-                dport_map_port: 58
-            324:
-                dport_map_port: 59
-            313:
-                dport_map_port: 60
-            330:
+            71:
                 dport_map_port: 61
+            88:
+                dport_map_port: 65
+            99:
+                dport_map_port: 69
+            104:
+                dport_map_port: 73
+            93:
+                dport_map_port: 77
+            110:
+                dport_map_port: 81
+            121:
+                dport_map_port: 85
+            126:
+                dport_map_port: 89
+            115:
+                dport_map_port: 93
+            132:
+                dport_map_port: 97
+            143:
+                dport_map_port: 101
+            148:
+                dport_map_port: 105
+            137:
+                dport_map_port: 109
+            154:
+                dport_map_port: 113
+            165:
+                dport_map_port: 117
+            170:
+                dport_map_port: 121
+            159:
+                dport_map_port: 125
+            176:
+                dport_map_port: 129
+            187:
+                dport_map_port: 133
+            192:
+                dport_map_port: 137
+            181:
+                dport_map_port: 141
+            198:
+                dport_map_port: 145
+            209:
+                dport_map_port: 149
+            214:
+                dport_map_port: 153
+            203:
+                dport_map_port: 157
+            220:
+                dport_map_port: 161
+            231:
+                dport_map_port: 165
+            236:
+                dport_map_port: 169
+            225:
+                dport_map_port: 173
+            242:
+                dport_map_port: 177
+            253:
+                dport_map_port: 181
+            258:
+                dport_map_port: 185
+            247:
+                dport_map_port: 189
+            264:
+                dport_map_port: 193
+            275:
+                dport_map_port: 197
+            280:
+                dport_map_port: 201
+            269:
+                dport_map_port: 205
+            286:
+                dport_map_port: 209
+            297:
+                dport_map_port: 213
+            302:
+                dport_map_port: 217
+            291:
+                dport_map_port: 221
+            308:
+                dport_map_port: 225
+            319:
+                dport_map_port: 229
+            324:
+                dport_map_port: 233
+            313:
+                dport_map_port: 237
+            330:
+                dport_map_port: 241
             341:
-                dport_map_port: 62
+                dport_map_port: 245
             346:
-                dport_map_port: 63
+                dport_map_port: 249
             335:
-                dport_map_port: 64
+                dport_map_port: 253
             186:
                 dport_map_port: 65
             274:

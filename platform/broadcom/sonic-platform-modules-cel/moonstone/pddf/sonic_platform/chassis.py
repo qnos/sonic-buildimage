@@ -39,16 +39,20 @@ class Chassis(PddfChassis):
 
     # Provide the functions/variables below for which implementation is to be overwritten
     
+    STATUS_LED_COLOR_AUTO = 'auto'
+    STATUS_LED_COLOR_MIX_BLINK_1HZ = 'mix_blink_1hz'
+    STATUS_LED_COLOR_MIX_BLINK_4HZ = 'mix_blink_4hz'
+    STATUS_LED_COLOR_GREEN_BLINK_1HZ = 'green_blink_1hz'
+    STATUS_LED_COLOR_GREEN_BLINK_4HZ = 'green_blink_4hz'
+    STATUS_LED_COLOR_AMBER_BLINK_1HZ = 'amber_blink_1hz'
+    STATUS_LED_COLOR_AMBER_BLINK_4HZ = 'amber_blink_4hz'
+    STATUS_LED_COLOR_UNKNOWN = 'unknown'
+
     def __init__(self, pddf_data=None, pddf_plugin_data=None):
 
         PddfChassis.__init__(self, pddf_data, pddf_plugin_data)
         self._api_helper = APIHelper()          
         self.__initialize_components()
-        self.STATUS_LED_COLOR_AUTO = 'auto'
-        self.STATUS_LED_COLOR_MIX_BLINK = 'mix_blink'
-        self.STATUS_LED_COLOR_GREEN_BLINK = 'green_blink'
-        self.STATUS_LED_COLOR_AMBER_BLINK = 'green_blink'
-        self.STATUS_LED_COLOR_UNKNOWN = 'unknown'
 
         thermal_count = len(self._thermal_list)
         if not self._api_helper.with_bmc():
@@ -59,6 +63,10 @@ class Chassis(PddfChassis):
             thermal = NonPddfThermal(thermal_count + 0, "CPU_TEMP")
             self._thermal_list.append(thermal)
             thermal = NonPddfThermal(thermal_count + 1, "TH5_CORE_TEMP")
+            self._thermal_list.append(thermal)
+            thermal = NonPddfThermal(thermal_count + 2, "STORAGE_TEMP")
+            self._thermal_list.append(thermal)
+            thermal = NonPddfThermal(thermal_count + 3, "OSFP_TEMP")
             self._thermal_list.append(thermal)
 
     def __initialize_components(self):
@@ -172,9 +180,12 @@ class Chassis(PddfChassis):
             color_dict = {
                 self.STATUS_LED_COLOR_GREEN: 0x10,
                 self.STATUS_LED_COLOR_AMBER: 0x20,
-                self.STATUS_LED_COLOR_MIX_BLINK: 0x01,
-                self.STATUS_LED_COLOR_GREEN_BLINK: 0x11,
-                self.STATUS_LED_COLOR_AMBER_BLINK: 0x21,
+                self.STATUS_LED_COLOR_MIX_BLINK_1HZ: 0xcd,
+                self.STATUS_LED_COLOR_MIX_BLINK_4HZ: 0xce,
+                self.STATUS_LED_COLOR_GREEN_BLINK_1HZ: 0xdd,
+                self.STATUS_LED_COLOR_GREEN_BLINK_4HZ: 0xde,
+                self.STATUS_LED_COLOR_AMBER_BLINK_1HZ: 0xed,
+                self.STATUS_LED_COLOR_AMBER_BLINK_4HZ: 0xee,
                 self.STATUS_LED_COLOR_OFF: 0x30
             }
             val = color_dict.get(color, 0xf)
@@ -230,14 +241,12 @@ class Chassis(PddfChassis):
                 0x33: self.STATUS_LED_COLOR_OFF,
                 0x10: self.STATUS_LED_COLOR_GREEN,
                 0x20: self.STATUS_LED_COLOR_AMBER,
-                0x00: self.STATUS_LED_COLOR_MIX_BLINK,
-                0x01: self.STATUS_LED_COLOR_MIX_BLINK,
-                0x02: self.STATUS_LED_COLOR_MIX_BLINK,
-                0x03: self.STATUS_LED_COLOR_MIX_BLINK,
-                0x11: self.STATUS_LED_COLOR_GREEN_BLINK,
-                0x12: self.STATUS_LED_COLOR_GREEN_BLINK,
-                0x21: self.STATUS_LED_COLOR_AMBER_BLINK,
-                0x22: self.STATUS_LED_COLOR_AMBER_BLINK
+                0x01: self.STATUS_LED_COLOR_MIX_BLINK_1HZ,
+                0x02: self.STATUS_LED_COLOR_MIX_BLINK_4HZ,
+                0x11: self.STATUS_LED_COLOR_GREEN_BLINK_1HZ,
+                0x12: self.STATUS_LED_COLOR_GREEN_BLINK_4HZ,
+                0x21: self.STATUS_LED_COLOR_AMBER_BLINK_1HZ,
+                0x22: self.STATUS_LED_COLOR_AMBER_BLINK_4HZ
             }
             
             return status_led.get(result, self.STATUS_LED_COLOR_UNKNOWN)
