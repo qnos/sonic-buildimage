@@ -35,7 +35,7 @@ class Sfp(PddfSfp):
 
     def get_reset_status(self):
         device = 'PORT{}'.format(self.port_index)
-        if self.pddf_obj.get_device_type(device).startswith('SFP'): 
+        if self.pddf_obj.get_device_type(device).startswith('SFP'):
             return False
         else:
             return super().get_reset_status()

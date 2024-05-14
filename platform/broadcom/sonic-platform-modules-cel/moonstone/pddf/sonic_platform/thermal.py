@@ -13,7 +13,7 @@ try:
     from sonic_platform_base.thermal_base import ThermalBase
     from .helper import APIHelper
     import subprocess
-    import syslog   
+    import syslog
     import os
     import re
     import os.path  
@@ -100,9 +100,9 @@ NONPDDF_THERMAL_SENSORS = {
                         "temp_cmd": "r=$(cat /sys/devices/platform/cls_sw_fpga/FPGA/TH5_max_temp) && printf '%.1f' $(($r / 1000))"},
     "XP0R8V_TEMP":    { "label": "raa228228-i2c-103-20", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon79/temp1_input) && printf '%.1f' $(($r / 1000))"},
-    "XP3R3V_E_TEMP":  { "label": "isl68225-i2c-103-60", "high_threshold": 90,
+    "XP3R3V_E_TEMP":  { "label": "isl68222-i2c-103-60", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon80/temp1_input) && printf '%.1f' $(($r / 1000))"},
-    "XP3R3V_W_TEMP":  { "label": "isl68225-i2c-103-61", "high_threshold": 90,
+    "XP3R3V_W_TEMP":  { "label": "isl68222-i2c-103-61", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon81/temp1_input) && printf '%.1f' $(($r / 1000))"},
     "XP0R9V_0_TEMP":  { "label": "isl68222-i2c-103-62", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon82/temp1_input) && printf '%.1f' $(($r / 1000))"},
@@ -112,9 +112,9 @@ NONPDDF_THERMAL_SENSORS = {
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon83/temp1_input) && printf '%.1f' $(($r / 1000))"},
     "XP1R2V_1_TEMP":  { "label": "isl68222-i2c-103-63", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon83/temp2_input) && printf '%.1f' $(($r / 1000))"},
-    "XP0R75V_0_TEMP": { "label": "isl68225-i2c-103-67", "high_threshold": 90,
+    "XP0R75V_0_TEMP": { "label": "isl68222-i2c-103-67", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon84/temp1_input) && printf '%.1f' $(($r / 1000))"},
-    "XP0R75V_1_TEMP": { "label": "isl68225-i2c-103-67", "high_threshold": 90,
+    "XP0R75V_1_TEMP": { "label": "isl68222-i2c-103-67", "high_threshold": 90,
                         "temp_cmd": "r=$(cat /sys/class/hwmon/hwmon84/temp2_input) && printf '%.1f' $(($r / 1000))"}}
 
 class NonPddfThermal(ThermalBase):
@@ -126,7 +126,7 @@ class NonPddfThermal(ThermalBase):
 
     def get_name(self):
         return self.thermal_name
-    
+
     def is_replaceable(self):
         if self.thermal_name == 'OSFP_TEMP':
             return True
@@ -134,7 +134,7 @@ class NonPddfThermal(ThermalBase):
             return False
 
     def get_osfp_max_temperature(self):
-        import sonic_platform   
+        import sonic_platform
         global platform_chassis
 
         max = 0.001
