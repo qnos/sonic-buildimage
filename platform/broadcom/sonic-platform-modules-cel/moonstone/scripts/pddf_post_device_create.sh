@@ -21,4 +21,3 @@ fi
 
 modprobe i2c-imc
 sleep 2
-

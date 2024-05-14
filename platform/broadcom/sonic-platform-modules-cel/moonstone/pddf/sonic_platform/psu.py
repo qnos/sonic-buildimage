@@ -35,21 +35,6 @@ class Psu(PddfPsu):
         
     # Provide the functions/variables below for which implementation is to be overwritten
 
-    def read(self, bus, i2c_slave_addr, addr, num_bytes):
-        if num_bytes == 0:
-            return []
-
-        data = ""
-        for i in range(0, num_bytes):
-            cmd = 'i2cget -f -y %d 0x%x 0x%x' % (bus, i2c_slave_addr, addr + i)
-            status, output = self._api_helper.run_command(cmd)
-            if status == False:
-                return []
-            data += output
-            if i < (num_bytes - 1): 
-                data += " "
-        return data 
-
     def get_presence(self):
 
         idx = self.psu_index - 1
@@ -133,6 +118,6 @@ class Psu(PddfPsu):
                 rev = output.split()[-1]
                 return rev
         else:
-            output = self.read(84 + self.psu_index - 1, 0x50, 0x40, 3)
+            output = self._api_helper.i2c_read(84 + self.psu_index - 1, 0x50, 0x40, 3)
             return bytes.fromhex(output.replace('0x', '').replace(" ", "")).decode("utf-8")
         return 'N/A'
