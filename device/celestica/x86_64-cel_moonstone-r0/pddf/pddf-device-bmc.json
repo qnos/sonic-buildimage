@@ -5,10 +5,10 @@
         "num_fantrays":3,
         "num_fans_pertray":2,
         "num_ports":66,
-        "num_temps":15,
+        "num_temps":17,
         "pddf_dev_types":
         {
-            "description":"moonstone pddf platform with BMC, ver v1.1",
+            "description":"moonstone pddf platform with BMC, ver v1.2",
             "CPLD":
             [
                 "i2c_cpld"
@@ -627,6 +627,32 @@
                 "attr_list":
                 [
                     { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"XP3R3V_W_TEMP", "field_pos":"3"}
+                ]
+            }
+        }
+    },
+    "TEMP16":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP16"},
+        "dev_attr": { "display_name":"DIMM0_TEMP"},
+        "bmc": {
+            "ipmitool" : {
+                "attr_list":
+                [
+                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"DIMM0_TEMP", "field_pos":"3"}
+                ]
+            }
+        }
+    },
+    "TEMP17":
+    {
+        "dev_info": { "device_type":"TEMP_SENSOR", "device_name":"TEMP17"},
+        "dev_attr": { "display_name":"DIMM1_TEMP"},
+        "bmc": {
+            "ipmitool" : {
+                "attr_list":
+                [
+                    { "attr_name":"temp1_input", "bmc_cmd":"ipmitool sensor", "raw":"0", "field_name":"DIMM1_TEMP", "field_pos":"3"}
                 ]
             }
         }

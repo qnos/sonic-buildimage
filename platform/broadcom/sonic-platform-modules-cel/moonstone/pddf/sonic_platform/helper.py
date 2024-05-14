@@ -102,3 +102,18 @@ class APIHelper():
         else:
             pass
         return False
+
+    def i2c_read(self, bus, i2c_slave_addr, addr, num_bytes):
+        if num_bytes == 0:
+            return []
+
+        data = ""
+        for i in range(0, num_bytes):
+            cmd = 'i2cget -f -y %d 0x%x 0x%x' % (bus, i2c_slave_addr, addr + i)
+            status, output = self._api_helper.run_command(cmd)
+            if status == False:
+                return []
+            data += output
+            if i < (num_bytes - 1): 
+                data += " "
+        return data 

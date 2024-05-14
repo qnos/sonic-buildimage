@@ -18,3 +18,6 @@ if [ ${BMC_PRESENCE} == "1" ]; then
 	echo isl68222 0x63  > /sys/bus/i2c/devices/i2c-103/new_device
 	echo isl68225 0x67  > /sys/bus/i2c/devices/i2c-103/new_device
 fi
+
+modprobe i2c-imc
+sleep 2

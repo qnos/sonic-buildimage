@@ -52,7 +52,6 @@ class Fan(PddfFan):
         PddfFan.__init__(self, tray_idx, fan_idx, pddf_data, pddf_plugin_data, is_psu_fan, psu_index)
         self._api_helper = APIHelper()
         self.target_speed = 0
-        self.runtime_speed = 0
 
     # Provide the functions/variables below for which implementation is to be overwritten
 
@@ -108,8 +107,7 @@ class Fan(PddfFan):
                  to 100 (full speed)
         """
         if self.is_psu_fan:
-            self.runtime_speed = super().get_speed()
-            return self.runtime_speed
+            return super().get_speed()
         else:
             if self.get_presence() is False:
                 return 0
@@ -118,7 +116,6 @@ class Fan(PddfFan):
             status, fpwm = self._api_helper.cpld_lpc_read(reg)
             pwm_to_dc = eval(self.plugin_data['FAN']['pwm_to_duty_cycle'])
             speed_percentage = int(round(pwm_to_dc(int(fpwm, 16))))
-            self.runtime_speed = speed_percentage
 
             return speed_percentage
             
@@ -154,13 +151,17 @@ class Fan(PddfFan):
         """
         if self.is_psu_fan:
             if self.get_psu_powergood_status():
-                return self.runtime_speed
+                return super().get_speed()
             else:
                 return 100
         else:
             if self.get_presence() and self.get_status():
-                if self.target_speed == 0:
-                    return self.runtime_speed
+                if self.target_speed == 0:              
+                    reg = self.FANTRAY_PWM_CTRL_REG_MAP.get(self.fantray_index)
+                    status, fpwm = self._api_helper.cpld_lpc_read(reg)
+                    pwm_to_dc = eval(self.plugin_data['FAN']['pwm_to_duty_cycle'])
+                    speed_percentage = int(round(pwm_to_dc(int(fpwm, 16))))
+                    return speed_percentage
                 else:
                     return self.target_speed
             else:

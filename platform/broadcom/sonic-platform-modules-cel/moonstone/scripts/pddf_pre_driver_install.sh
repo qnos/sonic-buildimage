@@ -18,9 +18,10 @@ fi
 echo "${pddf_psu_driver} driver module has rename now"
 
 insmod "/usr/lib/modules/${ker_name}/extra/i2c-xiic-fpga.ko"
+sleep 1
 insmod "/usr/lib/modules/${ker_name}/extra/switchboard_fpga.ko"
+sleep 1
 insmod "/usr/lib/modules/${ker_name}/extra/baseboard_cpld.ko"
-
-sleep 3
+sleep 1
 
 sync
