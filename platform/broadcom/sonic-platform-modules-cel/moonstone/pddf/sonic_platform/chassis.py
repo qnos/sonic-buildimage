@@ -355,3 +355,16 @@ class Chassis(PddfChassis):
             return True, {'sfp': sfp_event}
 
         return False, {'sfp': {}}
+
+    def get_thermal_manager(self):
+        """
+        Retrieves thermal manager class on this chasssis
+
+        Returns:
+            A class derived from ThermalManagerBase representing the
+            specified thermal manager
+        """
+        if not self._api_helper.with_bmc():
+            from .thermal_manager import ThermalManager
+            return ThermalManager
+        return None
