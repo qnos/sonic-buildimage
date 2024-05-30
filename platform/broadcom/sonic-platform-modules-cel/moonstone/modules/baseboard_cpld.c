@@ -35,7 +35,7 @@
  */
 #define VERSION_ADDR        0xA100
 #define SCRATCH_ADDR        0xA101
-#define CARD_PRESENCE_ADDR	0xA108
+#define CARD_PRESENCE_ADDR  0xA108
 #define FAN1_LED_ADDR       0xA141
 #define FAN1_R_SPD_ADDR     0xA142
 #define FAN1_F_SPD_ADDR     0xA143
@@ -62,13 +62,13 @@ static struct cpld_b_data *cpld_data;
 
 void cpld_b_lock(void)
 {
-	mutex_lock(&cpld_data->cpld_lock);
+    mutex_lock(&cpld_data->cpld_lock);
 }
 EXPORT_SYMBOL(cpld_b_lock);
 
 void cpld_b_unlock(void)
 {
-	mutex_unlock(&cpld_data->cpld_lock);
+    mutex_unlock(&cpld_data->cpld_lock);
 }
 EXPORT_SYMBOL(cpld_b_unlock);
 
@@ -134,8 +134,10 @@ static ssize_t getreg_store(struct device *dev, struct device_attribute *devattr
     uint16_t addr;
     char *last;
 
+    mutex_lock(&cpld_data->cpld_lock);
     addr = (uint16_t)strtoul(buf,&last,16);
     if(addr == 0 && buf == last){
+        mutex_unlock(&cpld_data->cpld_lock);
         return -EINVAL;
     }
     cpld_data->read_addr = addr;
@@ -146,7 +148,6 @@ static ssize_t getreg_show(struct device *dev, struct device_attribute *attr, ch
 {
     int len = 0;
     // CPLD register is one byte
-    mutex_lock(&cpld_data->cpld_lock);
     len = sprintf(buf, "0x%2.2x\n",inb(cpld_data->read_addr));
     mutex_unlock(&cpld_data->cpld_lock);
     return len;
@@ -175,26 +176,26 @@ static ssize_t setreg_store(struct device *dev, struct device_attribute *devattr
     addr = (uint16_t)strtoul(tok,&last,16);
     if(addr == 0 && tok == last){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);		
+        kfree(pclone);  
         return -EINVAL;
     }
 
     tok = strsep((char**)&pclone, " ");
     if(tok == NULL){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);		
+        kfree(pclone);
         return -EINVAL;
     }
     value = (uint8_t)strtoul(tok,&last,16);
     if(value == 0 && tok == last){
         mutex_unlock(&cpld_data->cpld_lock);
-        kfree(pclone);		
+        kfree(pclone);
         return -EINVAL;
     }
 
     outb(value,addr);
     mutex_unlock(&cpld_data->cpld_lock);
-    kfree(pclone);	
+    kfree(pclone);
     return count;
 }
 static DEVICE_ATTR_WO(setreg);

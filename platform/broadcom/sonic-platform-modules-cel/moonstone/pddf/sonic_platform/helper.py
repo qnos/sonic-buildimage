@@ -6,6 +6,7 @@ import struct
 import subprocess
 
 BMC_PRES_SYS_PATH = '/sys/devices/platform/sys_cpld/bmc_present_l'
+policy_json = "/usr/share/sonic/platform/thermal_policy.json"
 
 class APIHelper():
 
@@ -89,7 +90,22 @@ class APIHelper():
                 status, result = self.run_command('ipmitool raw 0x2e 0x04 0xcf 0xc2 0x00 1 0 1')
             return status
         else:
-            return False
+            if os.path.isfile(policy_json):
+                keyword = 'True' if enable else 'False'
+                cmd = "grep 'run_at_boot_up' {0} | grep {1} > /dev/null 2>&1 ".format(policy_json, keyword)
+                status, result = self.run_command(cmd)
+                if status: 
+                    return True
+                else:
+                    cmd = 'sed -i "4s/\(True\|False\)/{0}/g" {1}'.format(keyword, policy_json)
+                    status, result = self.run_command(cmd)
+                    if status:
+                        status, result = self.run_command('docker exec -it pmon supervisorctl restart thermalctld')
+                        return True if status else False
+                    else:
+                        return False
+            else:
+                return True if enable != True else False
 
     def fsc_enabled(self):
         if self.with_bmc():
@@ -100,7 +116,11 @@ class APIHelper():
                     if int(data_list[3]) == 0:
                         return True
         else:
-            pass
+            if os.path.isfile(policy_json):
+                cmd = "grep 'run_at_boot_up' {0} | grep 'True' > /dev/null 2>&1 ".format(policy_json)
+                status, result = self.run_command(cmd)
+                if status:
+                    return True
         return False
 
     def i2c_read(self, bus, i2c_slave_addr, addr, num_bytes):
@@ -110,7 +130,7 @@ class APIHelper():
         data = ""
         for i in range(0, num_bytes):
             cmd = 'i2cget -f -y %d 0x%x 0x%x' % (bus, i2c_slave_addr, addr + i)
-            status, output = self._api_helper.run_command(cmd)
+            status, output = self.run_command(cmd)
             if status == False:
                 return []
             data += output
