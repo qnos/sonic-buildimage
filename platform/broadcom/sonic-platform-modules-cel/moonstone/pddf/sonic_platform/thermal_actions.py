@@ -35,8 +35,8 @@ class SetFanSpeedAction(ThermalPolicyActionBase):
         """
         if SetFanSpeedAction.JSON_FIELD_SPEED in json_obj:
             speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_SPEED])
-            if speed < 0 or speed > 100:
-                raise ValueError('SetFanSpeedAction invalid speed value {} in JSON policy file, valid value should be [0, 100]'.
+            if speed <= 0 or speed > 100:
+                raise ValueError('SetFanSpeedAction invalid speed value {} in JSON policy file, valid value should be (0, 100]'.
                                  format(speed))
             self.speed = float(json_obj[SetFanSpeedAction.JSON_FIELD_SPEED])
         else:
@@ -49,7 +49,7 @@ class SetFanSpeedAction(ThermalPolicyActionBase):
         if FanInfo.INFO_NAME in thermal_info_dict and isinstance(thermal_info_dict[FanInfo.INFO_NAME], FanInfo):
             fan_info_obj = thermal_info_dict[FanInfo.INFO_NAME]
             for fan in fan_info_obj.get_all_fans():
-                fan.set_speed(int(speed))
+                fan.set_hw_speed(int(speed))
 
     @classmethod
     def step_set_all_fan_speed(cls, thermal_info_dict, step, speed):
@@ -62,13 +62,15 @@ class SetFanSpeedAction(ThermalPolicyActionBase):
                     continue
                 if speed < current_pwm:
                     while current_pwm - step > speed:
-                        fan.set_speed(current_pwm - step)
+                        fan.set_hw_speed(current_pwm - step)
+                        current_pwm = current_pwm - step
                         time.sleep(0.1)
                 else:
                     while current_pwm + step < speed:
-                        fan.set_speed(current_pwm + step)
+                        fan.set_hw_speed(current_pwm + step)
+                        current_pwm = current_pwm + step
                         time.sleep(0.1)
-                fan.set_speed(speed)
+                fan.set_hw_speed(speed)
 
 @thermal_json_object('fan.all.set_speed')
 class SetAllFanSpeedAction(SetFanSpeedAction):
@@ -220,9 +222,8 @@ class SwitchPolicyAction(ThermalPolicyActionBase):
         import time
         time.sleep(30)
         # Power off COMe through CPLD
-        #CPLD_POWRE_OFF_CMD = "echo 0xa120 0xfc > /sys/bus/platform/devices/baseboard/setreg"
-        #api_helper = APIHelper()
-        #api_helper.get_cmd_output(CPLD_POWER_OFF_CMD)
+        api_helper = APIHelper()
+        api_helper.cpld_lpc_write(0xA1AA, 0xDB)
 
 @thermal_json_object('system.shutdown')
 class SystemPolicyAction(ThermalPolicyActionBase):
@@ -242,9 +243,8 @@ class SystemPolicyAction(ThermalPolicyActionBase):
         import time
         time.sleep(30)
         # Power off COMe through CPLD
-        #CPLD_POWRE_OFF_CMD = "echo 0xa120 0xfc > /sys/bus/platform/devices/baseboard/setreg"
-        #api_helper = APIHelper()
-        #api_helper.get_cmd_output(CPLD_POWER_OFF_CMD)
+        api_helper = APIHelper()
+        api_helper.cpld_lpc_write(0xA1AA, 0xDB)
 
 @thermal_json_object('thermal_control.control')
 class ControlThermalAlgoAction(ThermalPolicyActionBase):

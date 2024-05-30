@@ -96,7 +96,7 @@ class Fan(PddfFan):
             A string, either FAN_DIRECTION_INTAKE or FAN_DIRECTION_EXHAUST
             depending on fan direction
         """
-        return self.FAN_DIRECTION_INTAKE
+        return self.FAN_DIRECTION_EXHAUST
 
     def get_speed(self):
         """
@@ -167,7 +167,7 @@ class Fan(PddfFan):
             else:
                 return 100
 
-    def __set_speed(self, speed):
+    def set_hw_speed(self, speed):
         """
         Sets the fan speed
         
@@ -179,15 +179,12 @@ class Fan(PddfFan):
             A boolean, True if speed is set successfully, False if not
         """
         if self.is_psu_fan:
-            print("Setting PSU fan speed is not allowed")
             return False
 
         if speed <= 0 or speed > 100:
-            print("Error: Invalid speed %d. Please provide a valid speed percentage" % speed)
             return False
 
         if 'duty_cycle_to_pwm' not in self.plugin_data['FAN']:
-            print("Setting fan speed is not allowed !")
             return False
 
         duty_cycle_to_pwm = eval(self.plugin_data['FAN']['duty_cycle_to_pwm'])
@@ -206,7 +203,6 @@ class Fan(PddfFan):
 
     def set_speed(self, speed):
         if self.is_psu_fan:
-            print("Setting PSU fan speed is not allowed")
             return False
     
         if speed > 0:
@@ -214,7 +210,7 @@ class Fan(PddfFan):
                 self._api_helper.fsc_enable(False)
                 if self._api_helper.fsc_enabled():
                     return False
-            return self.__set_speed(speed)
+            return self.set_hw_speed(speed)
         elif speed == 0:
             if self._api_helper.fsc_enabled() == False:
                 self._api_helper.fsc_enable(True)
